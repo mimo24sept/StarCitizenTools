@@ -570,7 +570,7 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                     </div>
                   </div>
                   <div className="table-shell medium-table">
-                    <table className="data-table">
+                    <table className="data-table compact-table inventory-compact-table">
                       <thead>
                         <tr>
                           <th>Material</th>
