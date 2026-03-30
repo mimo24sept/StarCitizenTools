@@ -271,9 +271,8 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   const craftPreview = detail ? db.evaluateCraft(detail, multiplier) : { craftable: false, possibleCount: 0, slots: [] };
   const qualityPreview = detail ? db.interpolateQualityEffects(detail, quality) : [];
 
-  async function toggleOwned() {
-    if (!detail) return;
-    await db.setBlueprintOwned(detail.id, !detail.owned);
+  async function toggleOwnedById(id, owned) {
+    await db.setBlueprintOwned(id, !owned);
     onMutate();
   }
 
@@ -372,6 +371,17 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                     <span>Time: {fmtSeconds(item.craftTimeSeconds)}</span>
                     <span>Tiers: {item.tiers || "-"}</span>
                   </div>
+                  <div className="button-row">
+                    <button
+                      className={`secondary-button small ${item.owned ? "is-owned-button" : ""}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleOwnedById(item.id, item.owned);
+                      }}
+                    >
+                      {item.owned ? "Owned" : "Mark owned"}
+                    </button>
+                  </div>
                   <span className="blueprint-card-link">Open crafting view</span>
                 </button>
               ))}
@@ -389,14 +399,9 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                     {detail.category} - {fmtSeconds(detail.craft_time_seconds)} - Tiers {detail.tiers}
                   </p>
                 </div>
-                <div className="button-row">
-                  <button className="secondary-button small" onClick={() => setCraftView("library")}>
-                    Back to blueprints
-                  </button>
-                  <button className="primary-button small" onClick={toggleOwned}>
-                    {detail.owned ? "Owned" : "Mark owned"}
-                  </button>
-                </div>
+                <button className="secondary-button small" onClick={() => setCraftView("library")}>
+                  Back to blueprints
+                </button>
               </div>
             ) : (
               <div className="button-row">
