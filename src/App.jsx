@@ -239,6 +239,7 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   const [category, setCategory] = useState("");
   const [resource, setResource] = useState("");
   const [ownedOnly, setOwnedOnly] = useState(false);
+  const [missionOnly, setMissionOnly] = useState(false);
   const [blueprints, setBlueprints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -258,13 +259,14 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
       search: deferredSearch,
       category,
       resource,
-      ownedOnly
+      ownedOnly,
+      missionOnly
     });
     setBlueprints(rows);
     if (!rows.some((row) => row.id === selectedId)) {
       setSelectedId(null);
     }
-  }, [db, version, deferredSearch, category, resource, ownedOnly, refreshToken]);
+  }, [db, version, deferredSearch, category, resource, ownedOnly, missionOnly, refreshToken]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -327,6 +329,7 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   }
 
   const ownedVisibleCount = blueprints.filter((item) => item.owned).length;
+  const selectedMission = detail?.missions?.[0] ?? null;
   const detailSlots = qualitySlots.map((slot) => {
     const ingredient = (detail?.ingredients ?? []).find((item) => getIngredientQualityKey(item) === slot.key) ?? null;
     const primaryOption = ingredient?.options?.[0] ?? null;
@@ -402,6 +405,13 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
             </button>
           </div>
 
+          <div className="filter-block">
+            <label>SOURCE</label>
+            <button className={`filter-toggle ${missionOnly ? "is-active" : ""}`} onClick={() => setMissionOnly((current) => !current)}>
+              {missionOnly ? "Mission blueprints" : "All sources"}
+            </button>
+          </div>
+
           <button
             className="scmdb-reset"
             onClick={() => {
@@ -409,6 +419,7 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
               setCategory("");
               setResource("");
               setOwnedOnly(false);
+              setMissionOnly(false);
             }}
           >
             Reset filters
@@ -430,9 +441,18 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                 </div>
                 <div className="scmdb-card-badges">
                   <span className="scmdb-tag cyan">{detail.category || "Blueprint"}</span>
+                  {selectedMission ? <span className="scmdb-tag purple">Mission BP</span> : null}
                   {detail.owned ? <span className="scmdb-tag green">Owned</span> : <span className="scmdb-tag amber">Missing</span>}
                 </div>
               </div>
+
+              {selectedMission ? (
+                <div className="scmdb-mission-inline">
+                  <span>MISSION</span>
+                  <strong>{selectedMission.name || "-"}</strong>
+                  <small>{selectedMission.contractor || "Unknown contractor"}{selectedMission.locations ? ` - ${selectedMission.locations}` : ""}</small>
+                </div>
+              ) : null}
 
               <SectionCard title="Craft setup">
                 <div className="scmdb-setup-grid">
@@ -557,6 +577,7 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                       <div className="scmdb-card-titleblock">
                         <div className="scmdb-card-badges">
                           <span className="scmdb-tag cyan">{item.category || "Blueprint"}</span>
+                          {item.hasMission ? <span className="scmdb-tag purple">Mission BP</span> : null}
                           {item.owned ? <span className="scmdb-tag green">Owned</span> : <span className="scmdb-tag amber">Missing</span>}
                         </div>
                         <strong>{item.name}</strong>

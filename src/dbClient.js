@@ -145,7 +145,7 @@ export async function createDbClient() {
     return queryAll(db, "SELECT DISTINCT name FROM ingredient_options WHERE name IS NOT NULL AND name <> '' ORDER BY name").map((row) => row.name);
   }
 
-  function searchBlueprints({ version, search = "", category = "", resource = "", ownedOnly = false }) {
+  function searchBlueprints({ version, search = "", category = "", resource = "", ownedOnly = false, missionOnly = false }) {
     let sql = `
       SELECT DISTINCT
         b.id,
@@ -153,6 +153,7 @@ export async function createDbClient() {
         b.category,
         b.craft_time_seconds AS craftTimeSeconds,
         b.tiers,
+        CASE WHEN EXISTS (SELECT 1 FROM missions m2 WHERE m2.blueprint_ref = b.id) THEN 1 ELSE 0 END AS hasMission,
         COALESCE(ob.owned, 0) AS owned
       FROM blueprints b
       LEFT JOIN blueprint_ingredients bi ON bi.blueprint_ref = b.id
@@ -174,12 +175,16 @@ export async function createDbClient() {
       sql += " AND (bi.display_name = ? OR io.name = ?)";
       params.push(resource, resource);
     }
+    if (missionOnly) {
+      sql += " AND EXISTS (SELECT 1 FROM missions m WHERE m.blueprint_ref = b.id)";
+    }
     if (ownedOnly) {
       sql += " AND COALESCE(ob.owned, 0) = 1";
     }
     sql += " ORDER BY b.name LIMIT 1400";
     return queryAll(db, sql, params).map((row) => ({
       ...row,
+      hasMission: Number(row.hasMission) === 1,
       owned: Number(row.owned) === 1
     }));
   }

@@ -373,7 +373,7 @@ textarea {
 }
 
 .stepper-button,
-.stepper-value,
+.stepper-input,
 .mini-preset {
   font-family: "Consolas", "Courier New", monospace;
 }
@@ -392,17 +392,17 @@ textarea {
   color: var(--accent);
 }
 
-.stepper-value {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.stepper-input {
+  width: 100%;
   min-height: 34px;
+  border: 0;
+  background: transparent;
   color: var(--text);
   font-weight: 700;
+  text-align: center;
   border-left: 1px solid rgba(64, 87, 112, 0.42);
   border-right: 1px solid rgba(64, 87, 112, 0.42);
 }
-
 .mini-preset-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -720,9 +720,10 @@ textarea {
 
 .scmdb-results {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   align-content: start;
-  overflow: hidden;
+  min-height: 0;
 }
 
 .scmdb-detail-view {
@@ -828,34 +829,6 @@ textarea {
   border-color: rgba(0, 215, 255, 0.32);
 }
 
-.scmdb-summary-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  margin-top: 0;
-}
-
-.summary-box {
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border: 1px solid rgba(64, 87, 112, 0.3);
-  background: #10161e;
-  border-radius: 8px;
-}
-
-.summary-box span {
-  color: var(--muted);
-  font-family: "Consolas", "Courier New", monospace;
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.summary-box strong {
-  font-size: 0.92rem;
-}
-
 .segment-card-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -935,6 +908,8 @@ textarea {
   padding: 16px;
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   align-content: start;
+  overflow: auto;
+  min-height: 0;
 }
 
 .blueprint-card {
@@ -949,9 +924,10 @@ textarea {
 
 .blueprint-card {
   padding: 16px;
-  min-height: 154px;
+  min-height: 168px;
   display: grid;
   gap: 12px;
+  grid-template-rows: auto 1fr auto;
 }
 
 .blueprint-card:hover,
@@ -1004,6 +980,7 @@ textarea {
 .scmdb-card-titleblock {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .scmdb-tag {
@@ -1029,19 +1006,45 @@ textarea {
   color: var(--warning);
 }
 
+.scmdb-tag.purple {
+  color: #b785ff;
+}
+
 .scmdb-subcopy {
   color: var(--muted);
   font-size: 0.82rem;
 }
 
+.scmdb-mission-inline {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(183, 133, 255, 0.2);
+  background: rgba(183, 133, 255, 0.05);
+  border-radius: 8px;
+}
+
+.scmdb-mission-inline span,
+.scmdb-mission-inline small {
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+}
+
+.scmdb-mission-inline strong {
+  color: #d8c1ff;
+  font-size: 0.96rem;
+}
+
 .scmdb-card-footer {
   justify-content: space-between;
   align-items: flex-end;
+  flex-wrap: wrap;
 }
 
 .scmdb-card-stats {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .scmdb-card-stats span {
@@ -1053,6 +1056,8 @@ textarea {
 .tile-action {
   padding: 7px 10px;
   font-size: 0.82rem;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
 .craft-overlay .section-card {
@@ -1240,7 +1245,6 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .scmdb-summary-grid,
   .segment-card-list,
   .scmdb-setup-grid {
     grid-template-columns: 1fr;
