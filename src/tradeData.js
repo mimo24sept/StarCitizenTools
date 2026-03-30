@@ -155,3 +155,21 @@ export function calculateBestRoutes(snapshot, options) {
 
   return routes.slice(0, 100);
 }
+
+export function diversifyRoutes(routes, maxPerCommodity = 2, limit = 24) {
+  const perCommodity = new Map();
+  const primary = [];
+  const overflow = [];
+
+  for (const route of routes) {
+    const count = perCommodity.get(route.commodityName) ?? 0;
+    if (count < maxPerCommodity) {
+      primary.push(route);
+      perCommodity.set(route.commodityName, count + 1);
+    } else {
+      overflow.push(route);
+    }
+  }
+
+  return [...primary, ...overflow].slice(0, limit);
+}

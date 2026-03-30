@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 
 import { createDbClient } from "./dbClient";
-import { calculateBestRoutes, getCargoShips, getSystems, getTerminalLabel, getTradeTerminals, loadTradeSnapshot } from "./tradeData";
+import { calculateBestRoutes, diversifyRoutes, getCargoShips, getSystems, getTerminalLabel, getTradeTerminals, loadTradeSnapshot } from "./tradeData";
 
 const PAGE_VISUALS = {
   crafting: [
@@ -912,7 +912,13 @@ function TradeRoutesPage({ visual }) {
     setError("");
   }
 
-  const selectedRoute = results[selectedIndex] ?? null;
+  const visibleResults = diversifyRoutes(results, 2, 24);
+  const visibleSelectedRoute = visibleResults[selectedIndex] ?? null;
+
+  useEffect(() => {
+    if (selectedIndex < visibleResults.length) return;
+    setSelectedIndex(0);
+  }, [selectedIndex, visibleResults.length]);
 
   return (
     <div className="page-shell trade-page">
@@ -921,21 +927,24 @@ function TradeRoutesPage({ visual }) {
           <div className="trade-inline-stats">
             <span>{results.length} routes</span>
             <span>Best {fmtMoney(results[0]?.profit ?? 0)}</span>
-            <span>{results[0]?.commodityName ?? "-"}</span>
+            <span>{visibleResults[0]?.commodityName ?? "-"}</span>
           </div>
           <div className="trade-form-grid">
             <label className="field-stack">
               <span>Ship</span>
-              <select className="app-select" value={form.shipId} onChange={(event) => setForm((current) => ({ ...current, shipId: event.target.value }))}>
+              <input
+                className="app-input"
+                list="trade-ship-options"
+                value={form.shipId}
+                onChange={(event) => setForm((current) => ({ ...current, shipId: event.target.value }))}
+                placeholder="Type a ship name"
+              />
+              <datalist id="trade-ship-options">
                 {ships.map((item) => {
                   const label = item.fullName || item.name;
-                  return (
-                    <option key={label} value={label}>
-                      {label} - {item.scu} SCU
-                    </option>
-                  );
+                  return <option key={label} value={label} />;
                 })}
-              </select>
+              </datalist>
             </label>
 
             <label className="field-stack">
@@ -1005,7 +1014,7 @@ function TradeRoutesPage({ visual }) {
           {!loading && !results.length ? <p className="empty-text">No profitable route found for the current budget, ship and origin.</p> : null}
           {!!results.length ? (
             <div className="trade-results">
-              {results.slice(0, 24).map((item, index) => (
+              {visibleResults.map((item, index) => (
                 <button key={`${item.commodityId}-${item.destinationTerminalId}-${index}`} className={`trade-route-card ${selectedIndex === index ? "is-selected" : ""}`} onClick={() => setSelectedIndex(index)}>
                   <div className="trade-route-head">
                     <strong>{item.commodityName}</strong>
@@ -1041,55 +1050,55 @@ function TradeRoutesPage({ visual }) {
         </SectionCard>
 
         <SectionCard title="Selected route" className="narrow-card">
-          {selectedRoute ? (
+          {visibleSelectedRoute ? (
             <div className="text-panel trade-selected">
-              <strong className="trade-selected-title">{selectedRoute.commodityName}</strong>
+              <strong className="trade-selected-title">{visibleSelectedRoute.commodityName}</strong>
               <div className="trade-selected-path">
-                <span>{selectedRoute.originName}</span>
+                <span>{visibleSelectedRoute.originName}</span>
                 <span className="trade-arrow">-&gt;</span>
-                <span>{selectedRoute.destinationName}</span>
+                <span>{visibleSelectedRoute.destinationName}</span>
               </div>
               <div className="trade-selected-locations">
                 <div className="route-step">
                   <strong>Buy at</strong>
-                  <span>{selectedRoute.originRegion}</span>
+                  <span>{visibleSelectedRoute.originRegion}</span>
                 </div>
                 <div className="route-step">
                   <strong>Sell at</strong>
-                  <span>{selectedRoute.destinationRegion}</span>
+                  <span>{visibleSelectedRoute.destinationRegion}</span>
                 </div>
               </div>
               <div className="trade-stat-grid">
                 <div className="source-card">
                   <strong>Buy price</strong>
-                  <span>{fmtMoney(selectedRoute.buyPrice)}</span>
+                  <span>{fmtMoney(visibleSelectedRoute.buyPrice)}</span>
                 </div>
                 <div className="source-card">
                   <strong>Sell price</strong>
-                  <span>{fmtMoney(selectedRoute.sellPrice)}</span>
+                  <span>{fmtMoney(visibleSelectedRoute.sellPrice)}</span>
                 </div>
                 <div className="source-card">
                   <strong>Profit / SCU</strong>
-                  <span>{fmtMoney(selectedRoute.unitProfit)}</span>
+                  <span>{fmtMoney(visibleSelectedRoute.unitProfit)}</span>
                 </div>
                 <div className="source-card">
                   <strong>Total profit</strong>
-                  <span>{fmtMoney(selectedRoute.profit)}</span>
+                  <span>{fmtMoney(visibleSelectedRoute.profit)}</span>
                 </div>
                 <div className="source-card">
                   <strong>Investment</strong>
-                  <span>{fmtMoney(selectedRoute.investment)}</span>
+                  <span>{fmtMoney(visibleSelectedRoute.investment)}</span>
                 </div>
                 <div className="source-card">
                   <strong>Margin</strong>
-                  <span>{selectedRoute.marginPercent.toFixed(1)}%</span>
+                  <span>{visibleSelectedRoute.marginPercent.toFixed(1)}%</span>
                 </div>
               </div>
               <div className="route-step">
                 <strong>Estimated fill</strong>
-                <span>{selectedRoute.quantity} SCU</span>
+                <span>{visibleSelectedRoute.quantity} SCU</span>
                 <span>
-                  Buy stock {fmtNumber(selectedRoute.availabilityScu)} / destination demand {fmtNumber(selectedRoute.destinationDemandScu)}
+                  Buy stock {fmtNumber(visibleSelectedRoute.availabilityScu)} / destination demand {fmtNumber(visibleSelectedRoute.destinationDemandScu)}
                 </span>
               </div>
             </div>

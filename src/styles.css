@@ -1160,8 +1160,6 @@ textarea {
 .trade-results {
   display: grid;
   gap: 10px;
-  max-height: calc(100vh - 220px);
-  overflow: auto;
 }
 
 .trade-route-card {
