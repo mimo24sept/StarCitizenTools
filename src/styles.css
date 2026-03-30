@@ -239,29 +239,6 @@ textarea {
   padding: 18px;
 }
 
-.subpage-switch {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.subpage-button {
-  border: 1px solid rgba(82, 211, 255, 0.12);
-  background: rgba(9, 20, 29, 0.72);
-  color: var(--muted);
-  padding: 12px 18px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: 160ms ease;
-}
-
-.subpage-button.is-active,
-.subpage-button:hover {
-  color: var(--text);
-  border-color: rgba(82, 211, 255, 0.28);
-  background: rgba(82, 211, 255, 0.12);
-}
-
 .section-header h3 {
   margin: 0 0 14px;
   font-size: 1.2rem;
@@ -322,6 +299,29 @@ textarea {
   margin-top: 0;
 }
 
+.craft-overlay {
+  display: grid;
+  gap: 14px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-28px);
+  transition: max-height 320ms ease, opacity 220ms ease, transform 240ms ease, margin-bottom 240ms ease;
+  margin-bottom: 0;
+}
+
+.craft-overlay.is-open {
+  max-height: 1600px;
+  opacity: 1;
+  transform: translateY(0);
+  margin-bottom: 14px;
+}
+
+.overlay-under {
+  position: relative;
+  z-index: 0;
+}
+
 .headline-row,
 .button-row {
   display: flex;
@@ -377,6 +377,38 @@ textarea {
   min-width: 560px;
 }
 
+.compact-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.compact-table th,
+.compact-table td {
+  padding: 10px 12px;
+  font-size: 0.95rem;
+}
+
+.compact-table th:nth-child(1),
+.compact-table td:nth-child(1) {
+  width: 28%;
+}
+
+.compact-table th:nth-child(2),
+.compact-table td:nth-child(2) {
+  width: 24%;
+}
+
+.compact-table th:nth-child(3),
+.compact-table td:nth-child(3),
+.compact-table th:nth-child(4),
+.compact-table td:nth-child(4),
+.compact-table th:nth-child(5),
+.compact-table td:nth-child(5),
+.compact-table th:nth-child(6),
+.compact-table td:nth-child(6) {
+  width: 12%;
+}
+
 .data-table th {
   position: sticky;
   top: 0;
@@ -417,8 +449,7 @@ textarea {
   gap: 14px;
 }
 
-.blueprint-card,
-.blueprint-picker-item {
+.blueprint-card {
   border: 1px solid rgba(82, 211, 255, 0.1);
   background: linear-gradient(180deg, rgba(13, 26, 37, 0.96), rgba(9, 19, 28, 0.92));
   color: var(--text);
@@ -436,9 +467,7 @@ textarea {
 }
 
 .blueprint-card:hover,
-.blueprint-card.is-selected,
-.blueprint-picker-item:hover,
-.blueprint-picker-item.is-selected {
+.blueprint-card.is-selected {
   transform: translateY(-1px);
   border-color: rgba(82, 211, 255, 0.26);
   background: linear-gradient(180deg, rgba(18, 35, 49, 0.98), rgba(10, 23, 34, 0.94));
@@ -453,15 +482,13 @@ textarea {
   flex-wrap: wrap;
 }
 
-.blueprint-card strong,
-.blueprint-picker-item strong {
+.blueprint-card strong {
   font-size: 1.08rem;
 }
 
 .blueprint-card-meta,
 .blueprint-card-link,
-.blueprint-category,
-.blueprint-picker-item span {
+.blueprint-category {
   color: var(--muted);
 }
 
@@ -485,20 +512,6 @@ textarea {
 .status-pill.is-owned {
   background: rgba(119, 225, 141, 0.14);
   color: var(--success);
-}
-
-.blueprint-picker {
-  display: grid;
-  gap: 10px;
-  margin-top: 14px;
-  max-height: 860px;
-  overflow: auto;
-}
-
-.blueprint-picker-item {
-  padding: 14px 16px;
-  display: grid;
-  gap: 4px;
 }
 
 .source-card,

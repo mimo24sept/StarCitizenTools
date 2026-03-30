@@ -230,7 +230,6 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   const [category, setCategory] = useState("");
   const [resource, setResource] = useState("");
   const [ownedOnly, setOwnedOnly] = useState(false);
-  const [craftView, setCraftView] = useState("library");
   const [blueprints, setBlueprints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -256,7 +255,7 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
     });
     setBlueprints(rows);
     if (!rows.some((row) => row.id === selectedId)) {
-      setSelectedId(rows[0]?.id ?? null);
+      setSelectedId(null);
     }
   }, [db, version, deferredSearch, category, resource, ownedOnly, refreshToken]);
 
@@ -303,199 +302,98 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
 
   return (
     <div className="page-shell">
-      <div className="subpage-switch">
-        <button className={`subpage-button ${craftView === "library" ? "is-active" : ""}`} onClick={() => setCraftView("library")}>
-          Blueprint list
-        </button>
-        <button className={`subpage-button ${craftView === "craft" ? "is-active" : ""}`} onClick={() => setCraftView("craft")}>
-          Crafting
-        </button>
-      </div>
-
-      {craftView === "library" ? (
-        <>
-          <SectionCard title="Blueprint filters">
-            <div className="toolbar-grid">
-              <input value={search} onChange={(event) => setSearch(event.target.value)} className="app-input" placeholder="Search blueprint" />
-              <select value={category} onChange={(event) => setCategory(event.target.value)} className="app-select">
-                <option value="">All categories</option>
-                {categories.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-              <select value={resource} onChange={(event) => setResource(event.target.value)} className="app-select">
-                <option value="">All materials</option>
-                {resources.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-              <label className="switch-line">
-                <input type="checkbox" checked={ownedOnly} onChange={(event) => setOwnedOnly(event.target.checked)} />
-                <span>Owned only</span>
-              </label>
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  setSearch("");
-                  setCategory("");
-                  setResource("");
-                  setOwnedOnly(false);
-                }}
-              >
-                Reset
-              </button>
-            </div>
-          </SectionCard>
-
-          <SectionCard title={`All blueprints (${blueprints.length})`} className="top-gap">
-            <div className="blueprint-grid">
-              {blueprints.map((item) => (
-                <button
-                  key={item.id}
-                  className={`blueprint-card ${selectedId === item.id ? "is-selected" : ""}`}
-                  onClick={() => {
-                    setSelectedId(item.id);
-                    setCraftView("craft");
-                  }}
-                >
-                  <div className="blueprint-card-top">
-                    <span className={`status-pill ${item.owned ? "is-owned" : ""}`}>{item.owned ? "Owned" : "Missing"}</span>
-                    <span className="blueprint-category">{item.category || "Unknown"}</span>
-                  </div>
-                  <strong>{item.name}</strong>
-                  <div className="blueprint-card-meta">
-                    <span>Time: {fmtSeconds(item.craftTimeSeconds)}</span>
-                    <span>Tiers: {item.tiers || "-"}</span>
-                  </div>
-                  <div className="button-row">
-                    <button
-                      className={`secondary-button small ${item.owned ? "is-owned-button" : ""}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleOwnedById(item.id, item.owned);
-                      }}
-                    >
-                      {item.owned ? "Owned" : "Mark owned"}
-                    </button>
-                  </div>
-                  <span className="blueprint-card-link">Open crafting view</span>
-                </button>
-              ))}
-            </div>
-          </SectionCard>
-        </>
-      ) : (
-        <div className="detail-column craft-layout-single">
+      <div className={`craft-overlay ${detail ? "is-open" : ""}`}>
+        {detail ? (
           <div className="detail-column">
             <SectionCard title="Craft overview">
-              {detail ? (
-                <>
-                  <div className="headline-row">
-                    <div>
-                      <h2 className="detail-title">{detail.name}</h2>
-                      <p className="detail-subtitle">
-                        {detail.category} - {fmtSeconds(detail.craft_time_seconds)} - Tiers {detail.tiers}
-                      </p>
-                    </div>
-                    <button className="secondary-button small" onClick={() => setCraftView("library")}>
-                      Change blueprint
-                    </button>
-                  </div>
-                  <div className="toolbar-grid compact">
-                    <label className="field-stack">
-                      <span>Craft quantity</span>
-                      <input className="app-input" type="number" min="1" value={multiplier} onChange={(event) => setMultiplier(Math.max(1, toNumber(event.target.value, 1)))} />
-                    </label>
-                    <label className="field-stack slider-stack">
-                      <span>Material quality</span>
-                      <input type="range" min="0" max="1000" value={quality} onChange={(event) => setQuality(toNumber(event.target.value, 500))} />
-                    </label>
-                    <div className="quality-pill">{quality} / 1000</div>
-                  </div>
-                </>
-              ) : (
-                <p className="empty-text">Select a blueprint to inspect it.</p>
-              )}
+              <div className="headline-row">
+                <div>
+                  <h2 className="detail-title">{detail.name}</h2>
+                  <p className="detail-subtitle">
+                    {detail.category} - {fmtSeconds(detail.craft_time_seconds)} - Tiers {detail.tiers}
+                  </p>
+                </div>
+                <button className="secondary-button small" onClick={() => setSelectedId(null)}>
+                  Close
+                </button>
+              </div>
+              <div className="toolbar-grid compact">
+                <label className="field-stack">
+                  <span>Craft quantity</span>
+                  <input className="app-input" type="number" min="1" value={multiplier} onChange={(event) => setMultiplier(Math.max(1, toNumber(event.target.value, 1)))} />
+                </label>
+                <label className="field-stack slider-stack">
+                  <span>Material quality</span>
+                  <input type="range" min="0" max="1000" value={quality} onChange={(event) => setQuality(toNumber(event.target.value, 500))} />
+                </label>
+                <div className="quality-pill">{quality} / 1000</div>
+              </div>
             </SectionCard>
 
             <div className="detail-grid">
               <SectionCard title="Craft readiness">
-                {detail ? (
-                  <>
-                    <p className="summary-copy">
-                      {craftPreview.craftable ? "Ready to craft" : "Missing materials"} - Estimated max crafts from local stock: {craftPreview.possibleCount}
-                    </p>
+                <p className="summary-copy">
+                  {craftPreview.craftable ? "Ready to craft" : "Missing materials"} - Estimated max crafts from local stock: {craftPreview.possibleCount}
+                </p>
                     <div className="table-shell medium-table">
-                      <table className="data-table">
-                        <thead>
-                          <tr>
-                            <th>Slot</th>
-                            <th>Material</th>
-                            <th>Need</th>
-                            <th>Stock</th>
-                            <th>Min Q</th>
-                            <th>State</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {craftPreview.slots.map((slot) => (
-                            <tr key={`${slot.slot}-${slot.material}`}>
-                              <td>{slot.slot}</td>
-                              <td>{slot.material}</td>
-                              <td>{slot.required.toFixed(3)}</td>
-                              <td>{slot.stock.toFixed(3)}</td>
-                              <td>{slot.minQuality}</td>
-                              <td>{slot.ok ? "READY" : "MISS"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                ) : (
-                  <p className="empty-text">No craft preview yet.</p>
-                )}
+                      <table className="data-table compact-table">
+                    <thead>
+                      <tr>
+                        <th>Slot</th>
+                        <th>Material</th>
+                        <th>Need</th>
+                        <th>Stock</th>
+                        <th>Min Q</th>
+                        <th>State</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {craftPreview.slots.map((slot) => (
+                        <tr key={`${slot.slot}-${slot.material}`}>
+                          <td>{slot.slot}</td>
+                          <td>{slot.material}</td>
+                          <td>{slot.required.toFixed(3)}</td>
+                          <td>{slot.stock.toFixed(3)}</td>
+                          <td>{slot.minQuality}</td>
+                          <td>{slot.ok ? "READY" : "MISS"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </SectionCard>
 
               <SectionCard title="Quality modifiers">
-                {detail ? (
-                  qualityPreview.length ? (
+                {qualityPreview.length ? (
                     <div className="table-shell medium-table">
-                      <table className="data-table">
-                        <thead>
-                          <tr>
-                            <th>Slot</th>
-                            <th>Stat</th>
-                            <th>Preview</th>
+                      <table className="data-table compact-table">
+                      <thead>
+                        <tr>
+                          <th>Slot</th>
+                          <th>Stat</th>
+                          <th>Preview</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {qualityPreview.map((item) => (
+                          <tr key={`${item.slot}-${item.stat}`}>
+                            <td>{item.slot}</td>
+                            <td>{item.stat}</td>
+                            <td>{item.modifier.toFixed(3)} ({item.modifierPercent >= 0 ? "+" : ""}{item.modifierPercent.toFixed(1)}%)</td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {qualityPreview.map((item) => (
-                            <tr key={`${item.slot}-${item.stat}`}>
-                              <td>{item.slot}</td>
-                              <td>{item.stat}</td>
-                              <td>{item.modifier.toFixed(3)} ({item.modifierPercent >= 0 ? "+" : ""}{item.modifierPercent.toFixed(1)}%)</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="empty-text">This blueprint has no explicit quality modifier data.</p>
-                  )
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
-                  <p className="empty-text">No quality preview yet.</p>
+                  <p className="empty-text">This blueprint has no explicit quality modifier data.</p>
                 )}
               </SectionCard>
             </div>
 
             <div className="detail-grid extra-top">
               <SectionCard title="Where to find it">
-                {detail?.missions?.length ? (
+                {detail.missions?.length ? (
                   <div className="text-panel">
                     {detail.missions.slice(0, 14).map((mission) => (
                       <article key={`${mission.name}-${mission.contractor}`} className="source-card">
@@ -563,8 +461,79 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
               </SectionCard>
             </div>
           </div>
+        ) : null}
+      </div>
+
+      <SectionCard title="Blueprint filters" className={detail ? "overlay-under" : ""}>
+        <div className="toolbar-grid">
+          <input value={search} onChange={(event) => setSearch(event.target.value)} className="app-input" placeholder="Search blueprint" />
+          <select value={category} onChange={(event) => setCategory(event.target.value)} className="app-select">
+            <option value="">All categories</option>
+            {categories.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <select value={resource} onChange={(event) => setResource(event.target.value)} className="app-select">
+            <option value="">All materials</option>
+            {resources.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <label className="switch-line">
+            <input type="checkbox" checked={ownedOnly} onChange={(event) => setOwnedOnly(event.target.checked)} />
+            <span>Owned only</span>
+          </label>
+          <button
+            className="secondary-button"
+            onClick={() => {
+              setSearch("");
+              setCategory("");
+              setResource("");
+              setOwnedOnly(false);
+            }}
+          >
+            Reset
+          </button>
         </div>
-      )}
+      </SectionCard>
+
+      <SectionCard title={`All blueprints (${blueprints.length})`} className={`top-gap ${detail ? "overlay-under" : ""}`}>
+        <div className="blueprint-grid">
+          {blueprints.map((item) => (
+            <button
+              key={item.id}
+              className={`blueprint-card ${selectedId === item.id ? "is-selected" : ""}`}
+              onClick={() => setSelectedId(item.id)}
+            >
+              <div className="blueprint-card-top">
+                <span className={`status-pill ${item.owned ? "is-owned" : ""}`}>{item.owned ? "Owned" : "Missing"}</span>
+                <span className="blueprint-category">{item.category || "Unknown"}</span>
+              </div>
+              <strong>{item.name}</strong>
+              <div className="blueprint-card-meta">
+                <span>Time: {fmtSeconds(item.craftTimeSeconds)}</span>
+                <span>Tiers: {item.tiers || "-"}</span>
+              </div>
+              <div className="button-row">
+                <button
+                  className={`secondary-button small ${item.owned ? "is-owned-button" : ""}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleOwnedById(item.id, item.owned);
+                  }}
+                >
+                  {item.owned ? "Owned" : "Mark owned"}
+                </button>
+              </div>
+              <span className="blueprint-card-link">Open crafting view</span>
+            </button>
+          ))}
+        </div>
+      </SectionCard>
     </div>
   );
 }
