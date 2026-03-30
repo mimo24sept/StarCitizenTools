@@ -37,6 +37,7 @@ const TRADE_NODES = {
 const CARGO_SHIPS = ["C2 Hercules", "M2 Hercules", "Caterpillar", "Mercury Star Runner", "Freelancer MAX", "Hull A"];
 const COMBAT_SHIPS = ["Arrow", "Gladius", "Hawk", "Talon", "Hornet Mk II", "Sabre", "Scorpius"];
 const LOADOUT_SLOTS = ["Power", "Cooler", "Shield", "Quantum", "Weapons", "Missiles", "Utility"];
+const QUALITY_PRESETS = [0, 250, 500, 750, 1000];
 
 function randomVisual(page) {
   const set = PAGE_VISUALS[page];
@@ -59,6 +60,10 @@ function toNumber(value, fallback = 0) {
 
 function getIngredientQualityKey(ingredient) {
   return ingredient?.slot ?? ingredient?.name ?? "?";
+}
+
+function clampQuality(value) {
+  return Math.max(0, Math.min(1000, toNumber(value, 500)));
 }
 
 function AppState({ title, subtitle }) {
@@ -237,8 +242,6 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   const [blueprints, setBlueprints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [inventory, setInventory] = useState([]);
-  const [inventoryForm, setInventoryForm] = useState({ id: null, resourceName: "", quantityScu: "", quality: "", location: "", notes: "" });
   const [multiplier, setMultiplier] = useState(1);
   const [globalQuality, setGlobalQuality] = useState(500);
   const [slotQualities, setSlotQualities] = useState({});
@@ -247,7 +250,6 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   useEffect(() => {
     setCategories(db.getCategories(version));
     setResources(db.getResources(version));
-    setInventory(db.getInventory());
   }, [db, version, refreshToken]);
 
   useEffect(() => {
@@ -273,7 +275,6 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
     setDetail(db.getBlueprintDetail(selectedId));
   }, [db, selectedId, refreshToken]);
 
-  const craftPreview = detail ? db.evaluateCraft(detail, multiplier) : { craftable: false, possibleCount: 0, slots: [] };
   const qualityPreview = detail ? db.interpolateQualityEffects(detail, { __default: globalQuality, ...slotQualities }) : [];
   const qualitySlots = detail
     ? (detail.ingredients ?? []).map((ingredient) => ({
@@ -299,7 +300,7 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   }
 
   function applyGlobalQuality(nextValue) {
-    const value = Math.max(0, Math.min(1000, toNumber(nextValue, 500)));
+    const value = clampQuality(nextValue);
     setGlobalQuality(value);
     if (!detail) return;
     const next = {};
@@ -310,45 +311,30 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   }
 
   function updateSlotQuality(slotKey, nextValue) {
-    const value = Math.max(0, Math.min(1000, toNumber(nextValue, 500)));
+    const value = clampQuality(nextValue);
     setSlotQualities((current) => ({
       ...current,
       [slotKey]: value
     }));
   }
 
-  async function saveInventory() {
-    const payload = {
-      resourceName: inventoryForm.resourceName.trim(),
-      quantityScu: toNumber(inventoryForm.quantityScu),
-      quality: toNumber(inventoryForm.quality),
-      location: inventoryForm.location.trim(),
-      notes: inventoryForm.notes.trim()
-    };
-    if (!payload.resourceName) return;
-    if (inventoryForm.id) {
-      await db.updateInventory(inventoryForm.id, payload);
-    } else {
-      await db.addInventory(payload);
-    }
-    setInventoryForm({ id: null, resourceName: "", quantityScu: "", quality: "", location: "", notes: "" });
-    onMutate();
+  function shiftGlobalQuality(delta) {
+    applyGlobalQuality(globalQuality + delta);
   }
 
-  async function deleteInventoryRow() {
-    if (!inventoryForm.id) return;
-    await db.deleteInventory(inventoryForm.id);
-    setInventoryForm({ id: null, resourceName: "", quantityScu: "", quality: "", location: "", notes: "" });
-    onMutate();
+  function shiftSlotQuality(slotKey, delta) {
+    updateSlotQuality(slotKey, Number(slotQualities[slotKey] ?? globalQuality) + delta);
   }
 
   const ownedVisibleCount = blueprints.filter((item) => item.owned).length;
   const detailSlots = qualitySlots.map((slot) => {
-    const craftSlot = craftPreview.slots.find((item) => item.slot === slot.slot) ?? null;
+    const ingredient = (detail?.ingredients ?? []).find((item) => getIngredientQualityKey(item) === slot.key) ?? null;
+    const primaryOption = ingredient?.options?.[0] ?? null;
     const effects = qualityPreview.filter((item) => item.slot === slot.slot);
     return {
       ...slot,
-      craftSlot,
+      required: Number(primaryOption?.quantity_scu ?? ingredient?.quantity_scu ?? 0) * multiplier,
+      minQuality: Number(primaryOption?.min_quality ?? 0),
       effects
     };
   });
@@ -448,50 +434,41 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                 </div>
               </div>
 
-              {detail.missions?.length ? (
-                <div className="scmdb-mission-banner">
-                  <span>MISSIONS ({detail.missions.length})</span>
-                  <strong>{detail.missions[0].name}</strong>
-                </div>
-              ) : null}
-
               <SectionCard title="Craft setup">
-                <div className="scmdb-action-row">
-                  <button className="primary-button small">Craft</button>
-                  <button className="secondary-button small" onClick={() => toggleOwnedById(detail.id, detail.owned)}>
-                    {detail.owned ? "Unmark owned" : "Mark owned"}
-                  </button>
-                  <div className="quality-pill">{globalQuality} / 1000</div>
-                </div>
-                <div className="toolbar-grid compact">
-                  <label className="field-stack">
-                    <span>Craft quantity</span>
-                    <input className="app-input" type="number" min="1" value={multiplier} onChange={(event) => setMultiplier(Math.max(1, toNumber(event.target.value, 1)))} />
-                  </label>
-                  <label className="field-stack slider-stack">
-                    <span>All materials</span>
-                    <input type="range" min="0" max="1000" value={globalQuality} onChange={(event) => applyGlobalQuality(event.target.value)} />
-                  </label>
-                  <div className="scmdb-preset-row">
-                    {[0, 250, 500, 1000].map((preset) => (
-                      <button key={preset} className={`preset-chip ${globalQuality === preset ? "is-active" : ""}`} onClick={() => applyGlobalQuality(preset)}>
-                        {preset === 0 ? "Min" : preset === 250 ? "Base" : preset === 500 ? "50%" : "Max"}
+                <div className="scmdb-setup-grid">
+                  <div className="scmdb-setup-main">
+                    <div className="scmdb-action-row">
+                      <button className="primary-button small">Craft</button>
+                      <button className="secondary-button small" onClick={() => toggleOwnedById(detail.id, detail.owned)}>
+                        {detail.owned ? "Unmark owned" : "Mark owned"}
                       </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="scmdb-summary-grid">
-                  <div className="summary-box">
-                    <span>Status</span>
-                    <strong>{craftPreview.craftable ? "Ready to craft" : "Missing materials"}</strong>
-                  </div>
-                  <div className="summary-box">
-                    <span>Max crafts</span>
-                    <strong>{craftPreview.possibleCount}</strong>
-                  </div>
-                  <div className="summary-box">
-                    <span>Time</span>
-                    <strong>{fmtSeconds(detail.craft_time_seconds)}</strong>
+                      <div className="quality-pill">{globalQuality} / 1000</div>
+                    </div>
+                    <div className="toolbar-grid compact compact-crafting-toolbar">
+                      <label className="field-stack">
+                        <span>Craft quantity</span>
+                        <input className="app-input" type="number" min="1" value={multiplier} onChange={(event) => setMultiplier(Math.max(1, toNumber(event.target.value, 1)))} />
+                      </label>
+                      <label className="field-stack">
+                        <span>All materials</span>
+                        <div className="brutalist-stepper">
+                          <button className="stepper-button" onClick={() => shiftGlobalQuality(-50)}>
+                            -
+                          </button>
+                          <input className="stepper-input" value={globalQuality} onChange={(event) => applyGlobalQuality(event.target.value)} />
+                          <button className="stepper-button" onClick={() => shiftGlobalQuality(50)}>
+                            +
+                          </button>
+                        </div>
+                      </label>
+                      <div className="scmdb-preset-row">
+                        {QUALITY_PRESETS.map((preset) => (
+                          <button key={preset} className={`preset-chip ${globalQuality === preset ? "is-active" : ""}`} onClick={() => applyGlobalQuality(preset)}>
+                            {preset === 0 ? "Min" : preset === 250 ? "Base" : preset === 500 ? "50%" : preset === 750 ? "High" : "Max"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </SectionCard>
@@ -503,11 +480,11 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                       <div className="segment-material">
                         <strong>{slot.material}</strong>
                         <span>
-                          {slot.craftSlot ? `${slot.craftSlot.required.toFixed(3)} SCU` : "-"} {slot.craftSlot ? `(min ${slot.craftSlot.minQuality})` : ""}
+                          {slot.required.toFixed(3)} SCU (min {slot.minQuality})
                         </span>
                       </div>
-                      <div className={`segment-state ${slot.craftSlot?.ok ? "is-ready" : "is-miss"}`}>
-                        {slot.craftSlot?.ok ? "READY" : "MISS"}
+                      <div className="segment-state is-info">
+                        {slot.slot}
                       </div>
                     </div>
                     <div className="quality-slider-row">
@@ -515,8 +492,22 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                         <strong>Quality</strong>
                         <span>{slot.material}</span>
                       </div>
-                      <input type="range" min="0" max="1000" value={slot.value} onChange={(event) => updateSlotQuality(slot.key, event.target.value)} />
-                      <div className="quality-slider-value">{slot.value}</div>
+                      <div className="brutalist-stepper wide">
+                        <button className="stepper-button" onClick={() => shiftSlotQuality(slot.key, -50)}>
+                          -
+                        </button>
+                        <input className="stepper-input" value={slot.value} onChange={(event) => updateSlotQuality(slot.key, event.target.value)} />
+                        <button className="stepper-button" onClick={() => shiftSlotQuality(slot.key, 50)}>
+                          +
+                        </button>
+                      </div>
+                      <div className="mini-preset-row">
+                        {[0, 500, 1000].map((preset) => (
+                          <button key={preset} className={`mini-preset ${slot.value === preset ? "is-active" : ""}`} onClick={() => updateSlotQuality(slot.key, preset)}>
+                            {preset === 0 ? "Min" : preset === 500 ? "50" : "Max"}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div className="segment-effects">
                       {slot.effects.length ? (
@@ -535,76 +526,6 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                     </div>
                   </SectionCard>
                 ))}
-              </div>
-
-              <div className="detail-grid extra-top">
-                <SectionCard title="Where to find it">
-                  {detail.missions?.length ? (
-                    <div className="text-panel">
-                      {detail.missions.slice(0, 14).map((mission) => (
-                        <article key={`${mission.name}-${mission.contractor}`} className="source-card">
-                          <strong>{mission.name}</strong>
-                          <span>Contractor: {mission.contractor}</span>
-                          <span>Type: {mission.mission_type}</span>
-                          <span>Locations: {mission.locations}</span>
-                          <span>Drop chance: {mission.drop_chance}</span>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="empty-text">No mission source data for this blueprint.</p>
-                  )}
-                </SectionCard>
-
-                <SectionCard title="Material inventory">
-                  <div className="inventory-form">
-                    <input className="app-input" placeholder="Material" value={inventoryForm.resourceName} onChange={(event) => setInventoryForm((current) => ({ ...current, resourceName: event.target.value }))} />
-                    <input className="app-input" placeholder="SCU" value={inventoryForm.quantityScu} onChange={(event) => setInventoryForm((current) => ({ ...current, quantityScu: event.target.value }))} />
-                    <input className="app-input" placeholder="Quality" value={inventoryForm.quality} onChange={(event) => setInventoryForm((current) => ({ ...current, quality: event.target.value }))} />
-                    <input className="app-input" placeholder="Location" value={inventoryForm.location} onChange={(event) => setInventoryForm((current) => ({ ...current, location: event.target.value }))} />
-                    <input className="app-input wide" placeholder="Notes" value={inventoryForm.notes} onChange={(event) => setInventoryForm((current) => ({ ...current, notes: event.target.value }))} />
-                    <div className="button-row">
-                      <button className="primary-button small" onClick={saveInventory}>{inventoryForm.id ? "Update" : "Add"}</button>
-                      <button className="secondary-button small" onClick={deleteInventoryRow} disabled={!inventoryForm.id}>Delete</button>
-                      <button className="ghost-button small" onClick={() => setInventoryForm({ id: null, resourceName: "", quantityScu: "", quality: "", location: "", notes: "" })}>Clear</button>
-                    </div>
-                  </div>
-                  <div className="table-shell medium-table">
-                    <table className="data-table compact-table inventory-compact-table">
-                      <thead>
-                        <tr>
-                          <th>Material</th>
-                          <th>SCU</th>
-                          <th>Q</th>
-                          <th>Location</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {inventory.map((item) => (
-                          <tr
-                            key={item.id}
-                            className={inventoryForm.id === item.id ? "is-selected" : ""}
-                            onClick={() =>
-                              setInventoryForm({
-                                id: item.id,
-                                resourceName: item.resourceName,
-                                quantityScu: String(item.quantityScu),
-                                quality: String(item.quality),
-                                location: item.location ?? "",
-                                notes: item.notes ?? ""
-                              })
-                            }
-                          >
-                            <td>{item.resourceName}</td>
-                            <td>{Number(item.quantityScu).toFixed(3)}</td>
-                            <td>{item.quality}</td>
-                            <td>{item.location || "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </SectionCard>
               </div>
             </div>
           ) : (

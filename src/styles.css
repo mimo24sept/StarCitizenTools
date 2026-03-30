@@ -149,7 +149,7 @@ textarea {
 }
 
 .page-shell {
-  padding: 12px;
+  padding: 8px;
 }
 
 .top-gap {
@@ -234,12 +234,12 @@ textarea {
 
 .section-card {
   border-radius: 10px;
-  padding: 14px;
+  padding: 10px;
 }
 
 .section-header h3 {
-  margin: 0 0 14px;
-  font-size: 0.96rem;
+  margin: 0 0 10px;
+  font-size: 0.88rem;
   letter-spacing: 0.08em;
   color: #b9c7d8;
   text-transform: uppercase;
@@ -253,7 +253,7 @@ textarea {
 }
 
 .toolbar-grid.compact {
-  grid-template-columns: 160px 1fr 120px;
+  grid-template-columns: 120px 1fr 180px;
   align-items: end;
 }
 
@@ -289,7 +289,7 @@ textarea {
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .detail-grid.extra-top {
@@ -315,7 +315,7 @@ textarea {
 
 .detail-title {
   margin: 0 0 4px;
-  font-size: 1.22rem;
+  font-size: 1.06rem;
 }
 
 .quality-pill {
@@ -332,16 +332,16 @@ textarea {
 
 .quality-slider-list {
   display: grid;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .quality-slider-row {
   display: grid;
-  grid-template-columns: minmax(170px, 220px) minmax(0, 1fr) 78px;
-  gap: 12px;
+  grid-template-columns: minmax(120px, 150px) minmax(160px, 1fr) 128px;
+  gap: 10px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 8px;
   background: #131922;
   border: 1px solid rgba(64, 87, 112, 0.36);
@@ -353,27 +353,74 @@ textarea {
 }
 
 .quality-slider-copy strong {
-  font-size: 0.98rem;
+  font-size: 0.9rem;
 }
 
 .quality-slider-copy span {
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.8rem;
 }
 
-.quality-slider-row input[type="range"] {
-  width: 100%;
+.brutalist-stepper {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  border: 1px solid rgba(64, 87, 112, 0.42);
+  background: #0f141b;
 }
 
-.quality-slider-value {
+.brutalist-stepper.wide {
+  min-width: 0;
+}
+
+.stepper-button,
+.stepper-value,
+.mini-preset {
+  font-family: "Consolas", "Courier New", monospace;
+}
+
+.stepper-button {
+  border: 0;
+  min-height: 34px;
+  background: #141a22;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.stepper-button:hover,
+.mini-preset:hover {
+  background: rgba(0, 215, 255, 0.08);
+  color: var(--accent);
+}
+
+.stepper-value {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 34px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   font-weight: 700;
+  border-left: 1px solid rgba(64, 87, 112, 0.42);
+  border-right: 1px solid rgba(64, 87, 112, 0.42);
+}
+
+.mini-preset-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.mini-preset {
+  border: 1px solid rgba(64, 87, 112, 0.42);
+  background: #0f141b;
+  color: #97a8ba;
+  min-height: 34px;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.mini-preset.is-active {
+  color: var(--accent);
+  border-color: rgba(0, 215, 255, 0.32);
 }
 
 .table-shell {
@@ -460,14 +507,14 @@ textarea {
   background: var(--panel-alt);
   color: var(--text);
   text-align: left;
-  padding: 10px 12px;
-  font-size: 0.82rem;
+  padding: 8px 10px;
+  font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .data-table td {
-  padding: 10px 12px;
+  padding: 8px 10px;
   color: var(--text);
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -497,16 +544,17 @@ textarea {
 
 .scmdb-page {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  min-height: calc(100vh - 16px);
 }
 
 .scmdb-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  min-height: 68px;
-  padding: 10px 14px;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   background: #12171f;
 }
@@ -545,7 +593,7 @@ textarea {
 
 .scmdb-logo {
   color: var(--accent);
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   letter-spacing: 0.06em;
 }
 
@@ -574,8 +622,8 @@ textarea {
 .scmdb-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 28px;
+  padding: 0 10px;
   border: 1px solid rgba(0, 215, 255, 0.22);
   background: rgba(0, 215, 255, 0.06);
   color: var(--accent);
@@ -607,6 +655,8 @@ textarea {
   gap: 0;
   border: 1px solid var(--border);
   background: #12171f;
+  min-height: 0;
+  height: calc(100vh - 88px);
 }
 
 .scmdb-filters {
@@ -617,7 +667,7 @@ textarea {
 
 .scmdb-panel-header,
 .scmdb-results-header {
-  padding: 14px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -630,7 +680,7 @@ textarea {
 .filter-block {
   display: grid;
   gap: 8px;
-  padding: 14px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(64, 87, 112, 0.18);
 }
 
@@ -665,20 +715,22 @@ textarea {
 
 .scmdb-reset {
   width: calc(100% - 32px);
-  margin: 16px;
+  margin: 12px;
 }
 
 .scmdb-results {
   display: grid;
   min-width: 0;
   align-content: start;
+  overflow: hidden;
 }
 
 .scmdb-detail-view {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: 10px 12px;
   align-content: start;
+  overflow: auto;
 }
 
 .scmdb-results-header {
@@ -734,7 +786,23 @@ textarea {
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
+}
+
+.scmdb-setup-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.scmdb-setup-main {
+  display: grid;
+  gap: 10px;
+}
+
+.compact-crafting-toolbar {
+  grid-template-columns: 110px minmax(0, 1fr) 170px;
 }
 
 .scmdb-preset-row {
@@ -748,7 +816,7 @@ textarea {
   border: 1px solid rgba(64, 87, 112, 0.42);
   background: #0f141b;
   color: #97a8ba;
-  border-radius: 6px;
+  border-radius: 0;
   padding: 8px 10px;
   font-family: "Consolas", "Courier New", monospace;
   cursor: pointer;
@@ -762,15 +830,15 @@ textarea {
 
 .scmdb-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 14px;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 0;
 }
 
 .summary-box {
   display: grid;
   gap: 4px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid rgba(64, 87, 112, 0.3);
   background: #10161e;
   border-radius: 8px;
@@ -785,12 +853,13 @@ textarea {
 }
 
 .summary-box strong {
-  font-size: 1rem;
+  font-size: 0.92rem;
 }
 
 .segment-card-list {
   display: grid;
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .segment-header {
@@ -798,7 +867,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .segment-material {
@@ -809,13 +878,13 @@ textarea {
 .segment-material span {
   color: var(--muted);
   font-family: "Consolas", "Courier New", monospace;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
 }
 
 .segment-state {
   min-width: 72px;
   text-align: center;
-  padding: 7px 10px;
+  padding: 6px 8px;
   border-radius: 6px;
   font-family: "Consolas", "Courier New", monospace;
   font-size: 0.82rem;
@@ -832,10 +901,15 @@ textarea {
   border-color: rgba(255, 111, 111, 0.24);
 }
 
+.segment-state.is-info {
+  color: var(--accent);
+  border-color: rgba(0, 215, 255, 0.24);
+}
+
 .segment-effects {
   display: grid;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .segment-effect-row {
@@ -843,7 +917,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding-top: 8px;
+  padding-top: 6px;
   border-top: 1px solid rgba(64, 87, 112, 0.22);
 }
 
@@ -854,7 +928,7 @@ textarea {
 .segment-effect-row strong {
   color: var(--success);
   font-family: "Consolas", "Courier New", monospace;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
 }
 
 .scmdb-grid {
@@ -1036,7 +1110,7 @@ textarea {
   border: 1px solid rgba(64, 87, 112, 0.42);
   background: #0f141b;
   color: var(--text);
-  padding: 10px 12px;
+  padding: 8px 10px;
 }
 
 .app-textarea {
@@ -1054,7 +1128,7 @@ textarea {
 .ghost-button {
   border: 0;
   border-radius: 6px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   font-weight: 700;
   cursor: pointer;
   transition: transform 150ms ease, opacity 150ms ease;
@@ -1135,6 +1209,7 @@ textarea {
 @media (max-width: 1450px) {
   .scmdb-layout {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .scmdb-filters {
@@ -1165,7 +1240,9 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .scmdb-summary-grid {
+  .scmdb-summary-grid,
+  .segment-card-list,
+  .scmdb-setup-grid {
     grid-template-columns: 1fr;
   }
 
