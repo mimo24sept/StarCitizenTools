@@ -145,7 +145,38 @@ export async function createDbClient() {
     return queryAll(db, "SELECT DISTINCT name FROM ingredient_options WHERE name IS NOT NULL AND name <> '' ORDER BY name").map((row) => row.name);
   }
 
-  function searchBlueprints({ version, search = "", category = "", resource = "", ownedOnly = false, missionOnly = false }) {
+  function getMissionTypes(version) {
+    return queryAll(
+      db,
+      `SELECT DISTINCT m.mission_type AS missionType
+       FROM missions m
+       JOIN blueprints b ON b.id = m.blueprint_ref
+       WHERE b.version = ? AND m.mission_type IS NOT NULL AND TRIM(m.mission_type) <> ''
+       ORDER BY m.mission_type`,
+      [version]
+    ).map((row) => row.missionType);
+  }
+
+  function getMissionLocations(version) {
+    const rows = queryAll(
+      db,
+      `SELECT DISTINCT m.locations
+       FROM missions m
+       JOIN blueprints b ON b.id = m.blueprint_ref
+       WHERE b.version = ? AND m.locations IS NOT NULL AND TRIM(m.locations) <> ''`,
+      [version]
+    );
+    const values = new Set();
+    for (const row of rows) {
+      for (const part of String(row.locations).split(",")) {
+        const value = part.trim();
+        if (value) values.add(value);
+      }
+    }
+    return Array.from(values).sort((a, b) => a.localeCompare(b));
+  }
+
+  function searchBlueprints({ version, search = "", category = "", resource = "", ownedOnly = false, missionOnly = false, missionType = "", missionLocation = "" }) {
     let sql = `
       SELECT DISTINCT
         b.id,
@@ -175,8 +206,17 @@ export async function createDbClient() {
       sql += " AND (bi.display_name = ? OR io.name = ?)";
       params.push(resource, resource);
     }
-    if (missionOnly) {
-      sql += " AND EXISTS (SELECT 1 FROM missions m WHERE m.blueprint_ref = b.id)";
+    if (missionOnly || missionType || missionLocation) {
+      sql += " AND EXISTS (SELECT 1 FROM missions m WHERE m.blueprint_ref = b.id";
+      if (missionType) {
+        sql += " AND m.mission_type = ?";
+        params.push(missionType);
+      }
+      if (missionLocation) {
+        sql += " AND LOWER(m.locations) LIKE ?";
+        params.push(`%${missionLocation.toLowerCase()}%`);
+      }
+      sql += ")";
     }
     if (ownedOnly) {
       sql += " AND COALESCE(ob.owned, 0) = 1";
@@ -440,6 +480,8 @@ export async function createDbClient() {
     getOverview,
     getCategories,
     getResources,
+    getMissionTypes,
+    getMissionLocations,
     searchBlueprints,
     getBlueprintDetail,
     setBlueprintOwned,

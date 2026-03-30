@@ -235,11 +235,15 @@ function App() {
 function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   const [categories, setCategories] = useState([]);
   const [resources, setResources] = useState([]);
+  const [missionTypes, setMissionTypes] = useState([]);
+  const [missionLocations, setMissionLocations] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [resource, setResource] = useState("");
   const [ownedOnly, setOwnedOnly] = useState(false);
   const [missionOnly, setMissionOnly] = useState(false);
+  const [missionType, setMissionType] = useState("");
+  const [missionLocation, setMissionLocation] = useState("");
   const [blueprints, setBlueprints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -251,6 +255,8 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   useEffect(() => {
     setCategories(db.getCategories(version));
     setResources(db.getResources(version));
+    setMissionTypes(db.getMissionTypes(version));
+    setMissionLocations(db.getMissionLocations(version));
   }, [db, version, refreshToken]);
 
   useEffect(() => {
@@ -260,13 +266,15 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
       category,
       resource,
       ownedOnly,
-      missionOnly
+      missionOnly,
+      missionType,
+      missionLocation
     });
     setBlueprints(rows);
     if (!rows.some((row) => row.id === selectedId)) {
       setSelectedId(null);
     }
-  }, [db, version, deferredSearch, category, resource, ownedOnly, missionOnly, refreshToken]);
+  }, [db, version, deferredSearch, category, resource, ownedOnly, missionOnly, missionType, missionLocation, refreshToken]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -412,6 +420,30 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
             </button>
           </div>
 
+          <div className="filter-block">
+            <label>MISSION TYPE</label>
+            <select value={missionType} onChange={(event) => setMissionType(event.target.value)} className="app-select mono-input">
+              <option value="">All mission types</option>
+              {missionTypes.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-block">
+            <label>MISSION LOCATION</label>
+            <select value={missionLocation} onChange={(event) => setMissionLocation(event.target.value)} className="app-select mono-input">
+              <option value="">All mission locations</option>
+              {missionLocations.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             className="scmdb-reset"
             onClick={() => {
@@ -420,6 +452,8 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
               setResource("");
               setOwnedOnly(false);
               setMissionOnly(false);
+              setMissionType("");
+              setMissionLocation("");
             }}
           >
             Reset filters
@@ -450,7 +484,11 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                 <div className="scmdb-mission-inline">
                   <span>MISSION</span>
                   <strong>{selectedMission.name || "-"}</strong>
-                  <small>{selectedMission.contractor || "Unknown contractor"}{selectedMission.locations ? ` - ${selectedMission.locations}` : ""}</small>
+                  <small>
+                    {selectedMission.mission_type || "Unknown type"}
+                    {selectedMission.contractor ? ` - ${selectedMission.contractor}` : ""}
+                    {selectedMission.locations ? ` - ${selectedMission.locations}` : ""}
+                  </small>
                 </div>
               ) : null}
 
