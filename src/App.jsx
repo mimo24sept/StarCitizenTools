@@ -224,13 +224,13 @@ function App() {
 }
 
 function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
-  const [overview, setOverview] = useState({ totalBlueprints: 0, ownedBlueprints: 0, uniqueIngredients: 0 });
   const [categories, setCategories] = useState([]);
   const [resources, setResources] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [resource, setResource] = useState("");
   const [ownedOnly, setOwnedOnly] = useState(false);
+  const [craftView, setCraftView] = useState("library");
   const [blueprints, setBlueprints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -241,7 +241,6 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
-    setOverview(db.getOverview(version));
     setCategories(db.getCategories(version));
     setResources(db.getResources(version));
     setInventory(db.getInventory());
@@ -305,233 +304,304 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
 
   return (
     <div className="page-shell">
-      <SectionCard title="Blueprint search">
-        <div className="toolbar-grid">
-          <input value={search} onChange={(event) => setSearch(event.target.value)} className="app-input" placeholder="Search blueprint" />
-          <select value={category} onChange={(event) => setCategory(event.target.value)} className="app-select">
-            <option value="">All categories</option>
-            {categories.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-          <select value={resource} onChange={(event) => setResource(event.target.value)} className="app-select">
-            <option value="">All materials</option>
-            {resources.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-          <label className="switch-line">
-            <input type="checkbox" checked={ownedOnly} onChange={(event) => setOwnedOnly(event.target.checked)} />
-            <span>Owned only</span>
-          </label>
-          <button className="secondary-button" onClick={() => { setSearch(""); setCategory(""); setResource(""); setOwnedOnly(false); }}>
-            Reset
-          </button>
-        </div>
-      </SectionCard>
+      <div className="subpage-switch">
+        <button className={`subpage-button ${craftView === "library" ? "is-active" : ""}`} onClick={() => setCraftView("library")}>
+          Blueprint list
+        </button>
+        <button className={`subpage-button ${craftView === "craft" ? "is-active" : ""}`} onClick={() => setCraftView("craft")}>
+          Crafting
+        </button>
+      </div>
 
-      <div className="split-layout">
-        <SectionCard title="Blueprint library" className="library-card">
-          <div className="table-shell library-shell">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Owned</th>
-                  <th>Name</th>
-                  <th>Category</th>
-                </tr>
-              </thead>
-              <tbody>
-                {blueprints.map((item) => (
-                  <tr key={item.id} className={selectedId === item.id ? "is-selected" : ""} onClick={() => setSelectedId(item.id)}>
-                    <td>{item.owned ? "YES" : "-"}</td>
-                    <td>{item.name}</td>
-                    <td>{item.category}</td>
-                  </tr>
+      {craftView === "library" ? (
+        <>
+          <SectionCard title="Blueprint filters">
+            <div className="toolbar-grid">
+              <input value={search} onChange={(event) => setSearch(event.target.value)} className="app-input" placeholder="Search blueprint" />
+              <select value={category} onChange={(event) => setCategory(event.target.value)} className="app-select">
+                <option value="">All categories</option>
+                {categories.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </SectionCard>
-
-        <div className="detail-column">
-          <SectionCard title="Blueprint overview">
-            {detail ? (
-              <>
-                <div className="headline-row">
-                  <div>
-                    <h2 className="detail-title">{detail.name}</h2>
-                    <p className="detail-subtitle">
-                      {detail.category} - {fmtSeconds(detail.craft_time_seconds)} - Tiers {detail.tiers}
-                    </p>
-                  </div>
-                  <button className="primary-button small" onClick={toggleOwned}>
-                    {detail.owned ? "Owned" : "Mark owned"}
-                  </button>
-                </div>
-                <div className="toolbar-grid compact">
-                  <label className="field-stack">
-                    <span>Craft quantity</span>
-                    <input className="app-input" type="number" min="1" value={multiplier} onChange={(event) => setMultiplier(Math.max(1, toNumber(event.target.value, 1)))} />
-                  </label>
-                  <label className="field-stack slider-stack">
-                    <span>Material quality</span>
-                    <input type="range" min="0" max="1000" value={quality} onChange={(event) => setQuality(toNumber(event.target.value, 500))} />
-                  </label>
-                  <div className="quality-pill">{quality} / 1000</div>
-                </div>
-              </>
-            ) : (
-              <p className="empty-text">Select a blueprint to inspect it.</p>
-            )}
+              </select>
+              <select value={resource} onChange={(event) => setResource(event.target.value)} className="app-select">
+                <option value="">All materials</option>
+                {resources.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+              <label className="switch-line">
+                <input type="checkbox" checked={ownedOnly} onChange={(event) => setOwnedOnly(event.target.checked)} />
+                <span>Owned only</span>
+              </label>
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  setSearch("");
+                  setCategory("");
+                  setResource("");
+                  setOwnedOnly(false);
+                }}
+              >
+                Reset
+              </button>
+            </div>
           </SectionCard>
 
-          <div className="detail-grid">
-            <SectionCard title="Craft readiness">
+          <SectionCard title={`All blueprints (${blueprints.length})`} className="top-gap">
+            <div className="blueprint-grid">
+              {blueprints.map((item) => (
+                <button
+                  key={item.id}
+                  className={`blueprint-card ${selectedId === item.id ? "is-selected" : ""}`}
+                  onClick={() => {
+                    setSelectedId(item.id);
+                    setCraftView("craft");
+                  }}
+                >
+                  <div className="blueprint-card-top">
+                    <span className={`status-pill ${item.owned ? "is-owned" : ""}`}>{item.owned ? "Owned" : "Missing"}</span>
+                    <span className="blueprint-category">{item.category || "Unknown"}</span>
+                  </div>
+                  <strong>{item.name}</strong>
+                  <div className="blueprint-card-meta">
+                    <span>Time: {fmtSeconds(item.craftTimeSeconds)}</span>
+                    <span>Tiers: {item.tiers || "-"}</span>
+                  </div>
+                  <span className="blueprint-card-link">Open crafting view</span>
+                </button>
+              ))}
+            </div>
+          </SectionCard>
+        </>
+      ) : (
+        <div className="split-layout craft-layout">
+          <SectionCard title="Choose blueprint">
+            <div className="toolbar-grid">
+              <input value={search} onChange={(event) => setSearch(event.target.value)} className="app-input" placeholder="Search blueprint" />
+              <select value={category} onChange={(event) => setCategory(event.target.value)} className="app-select">
+                <option value="">All categories</option>
+                {categories.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+              <select value={resource} onChange={(event) => setResource(event.target.value)} className="app-select">
+                <option value="">All materials</option>
+                {resources.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+              <label className="switch-line">
+                <input type="checkbox" checked={ownedOnly} onChange={(event) => setOwnedOnly(event.target.checked)} />
+                <span>Owned only</span>
+              </label>
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  setSearch("");
+                  setCategory("");
+                  setResource("");
+                  setOwnedOnly(false);
+                }}
+              >
+                Reset
+              </button>
+            </div>
+
+            <div className="blueprint-picker">
+              {blueprints.slice(0, 24).map((item) => (
+                <button key={item.id} className={`blueprint-picker-item ${selectedId === item.id ? "is-selected" : ""}`} onClick={() => setSelectedId(item.id)}>
+                  <strong>{item.name}</strong>
+                  <span>{item.category || "Unknown"}</span>
+                  <span>{item.owned ? "Owned" : "Not owned"}</span>
+                </button>
+              ))}
+            </div>
+          </SectionCard>
+
+          <div className="detail-column">
+            <SectionCard title="Craft overview">
               {detail ? (
                 <>
-                  <p className="summary-copy">
-                    {craftPreview.craftable ? "Ready to craft" : "Missing materials"} - Estimated max crafts from local stock: {craftPreview.possibleCount}
-                  </p>
-                  <div className="table-shell medium-table">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Slot</th>
-                          <th>Material</th>
-                          <th>Need</th>
-                          <th>Stock</th>
-                          <th>Min Q</th>
-                          <th>State</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {craftPreview.slots.map((slot) => (
-                          <tr key={`${slot.slot}-${slot.material}`}>
-                            <td>{slot.slot}</td>
-                            <td>{slot.material}</td>
-                            <td>{slot.required.toFixed(3)}</td>
-                            <td>{slot.stock.toFixed(3)}</td>
-                            <td>{slot.minQuality}</td>
-                            <td>{slot.ok ? "READY" : "MISS"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="headline-row">
+                    <div>
+                      <h2 className="detail-title">{detail.name}</h2>
+                      <p className="detail-subtitle">
+                        {detail.category} - {fmtSeconds(detail.craft_time_seconds)} - Tiers {detail.tiers}
+                      </p>
+                    </div>
+                    <button className="primary-button small" onClick={toggleOwned}>
+                      {detail.owned ? "Owned" : "Mark owned"}
+                    </button>
+                  </div>
+                  <div className="toolbar-grid compact">
+                    <label className="field-stack">
+                      <span>Craft quantity</span>
+                      <input className="app-input" type="number" min="1" value={multiplier} onChange={(event) => setMultiplier(Math.max(1, toNumber(event.target.value, 1)))} />
+                    </label>
+                    <label className="field-stack slider-stack">
+                      <span>Material quality</span>
+                      <input type="range" min="0" max="1000" value={quality} onChange={(event) => setQuality(toNumber(event.target.value, 500))} />
+                    </label>
+                    <div className="quality-pill">{quality} / 1000</div>
                   </div>
                 </>
               ) : (
-                <p className="empty-text">No craft preview yet.</p>
+                <p className="empty-text">Select a blueprint to inspect it.</p>
               )}
             </SectionCard>
 
-            <SectionCard title="Quality modifiers">
-              {detail ? (
-                qualityPreview.length ? (
-                  <div className="table-shell medium-table">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Slot</th>
-                          <th>Stat</th>
-                          <th>Preview</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {qualityPreview.map((item) => (
-                          <tr key={`${item.slot}-${item.stat}`}>
-                            <td>{item.slot}</td>
-                            <td>{item.stat}</td>
-                            <td>{item.modifier.toFixed(3)} ({item.modifierPercent >= 0 ? "+" : ""}{item.modifierPercent.toFixed(1)}%)</td>
+            <div className="detail-grid">
+              <SectionCard title="Craft readiness">
+                {detail ? (
+                  <>
+                    <p className="summary-copy">
+                      {craftPreview.craftable ? "Ready to craft" : "Missing materials"} - Estimated max crafts from local stock: {craftPreview.possibleCount}
+                    </p>
+                    <div className="table-shell medium-table">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Slot</th>
+                            <th>Material</th>
+                            <th>Need</th>
+                            <th>Stock</th>
+                            <th>Min Q</th>
+                            <th>State</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {craftPreview.slots.map((slot) => (
+                            <tr key={`${slot.slot}-${slot.material}`}>
+                              <td>{slot.slot}</td>
+                              <td>{slot.material}</td>
+                              <td>{slot.required.toFixed(3)}</td>
+                              <td>{slot.stock.toFixed(3)}</td>
+                              <td>{slot.minQuality}</td>
+                              <td>{slot.ok ? "READY" : "MISS"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : (
+                  <p className="empty-text">No craft preview yet.</p>
+                )}
+              </SectionCard>
+
+              <SectionCard title="Quality modifiers">
+                {detail ? (
+                  qualityPreview.length ? (
+                    <div className="table-shell medium-table">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Slot</th>
+                            <th>Stat</th>
+                            <th>Preview</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {qualityPreview.map((item) => (
+                            <tr key={`${item.slot}-${item.stat}`}>
+                              <td>{item.slot}</td>
+                              <td>{item.stat}</td>
+                              <td>{item.modifier.toFixed(3)} ({item.modifierPercent >= 0 ? "+" : ""}{item.modifierPercent.toFixed(1)}%)</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="empty-text">This blueprint has no explicit quality modifier data.</p>
+                  )
+                ) : (
+                  <p className="empty-text">No quality preview yet.</p>
+                )}
+              </SectionCard>
+            </div>
+
+            <div className="detail-grid extra-top">
+              <SectionCard title="Where to find it">
+                {detail?.missions?.length ? (
+                  <div className="text-panel">
+                    {detail.missions.slice(0, 14).map((mission) => (
+                      <article key={`${mission.name}-${mission.contractor}`} className="source-card">
+                        <strong>{mission.name}</strong>
+                        <span>Contractor: {mission.contractor}</span>
+                        <span>Type: {mission.mission_type}</span>
+                        <span>Locations: {mission.locations}</span>
+                        <span>Drop chance: {mission.drop_chance}</span>
+                      </article>
+                    ))}
                   </div>
                 ) : (
-                  <p className="empty-text">This blueprint has no explicit quality modifier data.</p>
-                )
-              ) : (
-                <p className="empty-text">No quality preview yet.</p>
-              )}
-            </SectionCard>
-          </div>
+                  <p className="empty-text">No mission source data for this blueprint.</p>
+                )}
+              </SectionCard>
 
-          <div className="detail-grid extra-top">
-            <SectionCard title="Where to find it">
-              {detail?.missions?.length ? (
-                <div className="text-panel">
-                  {detail.missions.slice(0, 14).map((mission) => (
-                    <article key={`${mission.name}-${mission.contractor}`} className="source-card">
-                      <strong>{mission.name}</strong>
-                      <span>Contractor: {mission.contractor}</span>
-                      <span>Type: {mission.mission_type}</span>
-                      <span>Locations: {mission.locations}</span>
-                      <span>Drop chance: {mission.drop_chance}</span>
-                    </article>
-                  ))}
+              <SectionCard title="Material inventory">
+                <div className="inventory-form">
+                  <input className="app-input" placeholder="Material" value={inventoryForm.resourceName} onChange={(event) => setInventoryForm((current) => ({ ...current, resourceName: event.target.value }))} />
+                  <input className="app-input" placeholder="SCU" value={inventoryForm.quantityScu} onChange={(event) => setInventoryForm((current) => ({ ...current, quantityScu: event.target.value }))} />
+                  <input className="app-input" placeholder="Quality" value={inventoryForm.quality} onChange={(event) => setInventoryForm((current) => ({ ...current, quality: event.target.value }))} />
+                  <input className="app-input" placeholder="Location" value={inventoryForm.location} onChange={(event) => setInventoryForm((current) => ({ ...current, location: event.target.value }))} />
+                  <input className="app-input wide" placeholder="Notes" value={inventoryForm.notes} onChange={(event) => setInventoryForm((current) => ({ ...current, notes: event.target.value }))} />
+                  <div className="button-row">
+                    <button className="primary-button small" onClick={saveInventory}>{inventoryForm.id ? "Update" : "Add"}</button>
+                    <button className="secondary-button small" onClick={deleteInventoryRow} disabled={!inventoryForm.id}>Delete</button>
+                    <button className="ghost-button small" onClick={() => setInventoryForm({ id: null, resourceName: "", quantityScu: "", quality: "", location: "", notes: "" })}>Clear</button>
+                  </div>
                 </div>
-              ) : (
-                <p className="empty-text">No mission source data for this blueprint.</p>
-              )}
-            </SectionCard>
-
-            <SectionCard title="Material inventory">
-              <div className="inventory-form">
-                <input className="app-input" placeholder="Material" value={inventoryForm.resourceName} onChange={(event) => setInventoryForm((current) => ({ ...current, resourceName: event.target.value }))} />
-                <input className="app-input" placeholder="SCU" value={inventoryForm.quantityScu} onChange={(event) => setInventoryForm((current) => ({ ...current, quantityScu: event.target.value }))} />
-                <input className="app-input" placeholder="Quality" value={inventoryForm.quality} onChange={(event) => setInventoryForm((current) => ({ ...current, quality: event.target.value }))} />
-                <input className="app-input" placeholder="Location" value={inventoryForm.location} onChange={(event) => setInventoryForm((current) => ({ ...current, location: event.target.value }))} />
-                <input className="app-input wide" placeholder="Notes" value={inventoryForm.notes} onChange={(event) => setInventoryForm((current) => ({ ...current, notes: event.target.value }))} />
-                <div className="button-row">
-                  <button className="primary-button small" onClick={saveInventory}>{inventoryForm.id ? "Update" : "Add"}</button>
-                  <button className="secondary-button small" onClick={deleteInventoryRow} disabled={!inventoryForm.id}>Delete</button>
-                  <button className="ghost-button small" onClick={() => setInventoryForm({ id: null, resourceName: "", quantityScu: "", quality: "", location: "", notes: "" })}>Clear</button>
-                </div>
-              </div>
-              <div className="table-shell medium-table">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Material</th>
-                      <th>SCU</th>
-                      <th>Q</th>
-                      <th>Location</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inventory.map((item) => (
-                      <tr
-                        key={item.id}
-                        className={inventoryForm.id === item.id ? "is-selected" : ""}
-                        onClick={() =>
-                          setInventoryForm({
-                            id: item.id,
-                            resourceName: item.resourceName,
-                            quantityScu: String(item.quantityScu),
-                            quality: String(item.quality),
-                            location: item.location ?? "",
-                            notes: item.notes ?? ""
-                          })
-                        }
-                      >
-                        <td>{item.resourceName}</td>
-                        <td>{Number(item.quantityScu).toFixed(3)}</td>
-                        <td>{item.quality}</td>
-                        <td>{item.location || "-"}</td>
+                <div className="table-shell medium-table">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Material</th>
+                        <th>SCU</th>
+                        <th>Q</th>
+                        <th>Location</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </SectionCard>
+                    </thead>
+                    <tbody>
+                      {inventory.map((item) => (
+                        <tr
+                          key={item.id}
+                          className={inventoryForm.id === item.id ? "is-selected" : ""}
+                          onClick={() =>
+                            setInventoryForm({
+                              id: item.id,
+                              resourceName: item.resourceName,
+                              quantityScu: String(item.quantityScu),
+                              quality: String(item.quality),
+                              location: item.location ?? "",
+                              notes: item.notes ?? ""
+                            })
+                          }
+                        >
+                          <td>{item.resourceName}</td>
+                          <td>{Number(item.quantityScu).toFixed(3)}</td>
+                          <td>{item.quality}</td>
+                          <td>{item.location || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SectionCard>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
