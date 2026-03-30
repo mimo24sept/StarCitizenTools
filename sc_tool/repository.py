@@ -267,15 +267,24 @@ def search_blueprints(
     search: str = "",
     category: str = "",
     resource: str = "",
+    owned_only: bool = False,
     limit: int = 500,
 ) -> list[dict[str, Any]]:
     search_value = f"%{search.strip().lower()}%"
     params: list[Any] = [version]
     query = """
-        SELECT DISTINCT b.id, b.name, b.category, b.craft_time_seconds, b.tiers, b.version
+        SELECT DISTINCT
+            b.id,
+            b.name,
+            b.category,
+            b.craft_time_seconds,
+            b.tiers,
+            b.version,
+            COALESCE(ob.owned, 0) AS owned
         FROM blueprints b
         LEFT JOIN blueprint_ingredients bi ON bi.blueprint_ref = b.id
         LEFT JOIN ingredient_options io ON io.ingredient_ref = bi.id
+        LEFT JOIN owned_blueprints ob ON ob.blueprint_ref = b.id
         WHERE b.version = ?
     """
     if search.strip():
@@ -287,6 +296,8 @@ def search_blueprints(
     if resource:
         query += " AND (bi.display_name = ? OR io.name = ?)"
         params.extend([resource, resource])
+    if owned_only:
+        query += " AND COALESCE(ob.owned, 0) = 1"
     query += " ORDER BY b.name LIMIT ?"
     params.append(limit)
 
@@ -297,8 +308,20 @@ def search_blueprints(
 
 def get_blueprint_detail(blueprint_id: int) -> dict[str, Any] | None:
     with db_cursor() as connection:
-        row = connection.execute("SELECT raw_json FROM blueprints WHERE id = ?", (blueprint_id,)).fetchone()
-    return json.loads(row["raw_json"]) if row else None
+        row = connection.execute(
+            """
+            SELECT b.raw_json, COALESCE(ob.owned, 0) AS owned
+            FROM blueprints b
+            LEFT JOIN owned_blueprints ob ON ob.blueprint_ref = b.id
+            WHERE b.id = ?
+            """,
+            (blueprint_id,),
+        ).fetchone()
+    if not row:
+        return None
+    payload = json.loads(row["raw_json"])
+    payload["owned"] = bool(row["owned"])
+    return payload
 
 
 def get_categories(version: str) -> list[str]:
@@ -329,6 +352,48 @@ def get_known_resources(version: str) -> list[str]:
             """
         ).fetchall()
     return [row["name"] for row in rows]
+
+
+def owned_blueprint_ids(version: str) -> set[int]:
+    with db_cursor() as connection:
+        rows = connection.execute(
+            """
+            SELECT b.id
+            FROM owned_blueprints ob
+            JOIN blueprints b ON b.id = ob.blueprint_ref
+            WHERE b.version = ? AND ob.owned = 1
+            """,
+            (version,),
+        ).fetchall()
+    return {int(row["id"]) for row in rows}
+
+
+def set_blueprint_owned(blueprint_id: int, owned: bool) -> None:
+    with db_cursor() as connection:
+        connection.execute(
+            """
+            INSERT INTO owned_blueprints(blueprint_ref, owned, updated_at)
+            VALUES(?, ?, ?)
+            ON CONFLICT(blueprint_ref) DO UPDATE SET
+                owned=excluded.owned,
+                updated_at=excluded.updated_at
+            """,
+            (blueprint_id, 1 if owned else 0, utc_now()),
+        )
+
+
+def count_owned_blueprints(version: str) -> int:
+    with db_cursor() as connection:
+        row = connection.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM owned_blueprints ob
+            JOIN blueprints b ON b.id = ob.blueprint_ref
+            WHERE b.version = ? AND ob.owned = 1
+            """,
+            (version,),
+        ).fetchone()
+    return int(row["total"]) if row else 0
 
 
 def list_inventory() -> list[dict[str, Any]]:
@@ -376,6 +441,32 @@ def inventory_summary() -> dict[str, list[dict[str, Any]]]:
     for row in list_inventory():
         grouped[row["resource_name"]].append(row)
     return dict(grouped)
+
+
+def interpolate_quality_effects(blueprint_payload: dict[str, Any], material_quality: int) -> list[dict[str, Any]]:
+    quality = max(0, min(1000, int(material_quality)))
+    previews: list[dict[str, Any]] = []
+    for ingredient in blueprint_payload.get("ingredients") or []:
+        for effect in ingredient.get("quality_effects") or []:
+            if not isinstance(effect, dict):
+                continue
+            qmin = int(effect.get("quality_min", 0))
+            qmax = int(effect.get("quality_max", 1000))
+            at_min = float(effect.get("modifier_at_min", 1.0))
+            at_max = float(effect.get("modifier_at_max", 1.0))
+            ratio = 0.0 if qmax == qmin else (quality - qmin) / (qmax - qmin)
+            ratio = max(0.0, min(1.0, ratio))
+            value = at_min + (at_max - at_min) * ratio
+            previews.append(
+                {
+                    "slot": ingredient.get("slot"),
+                    "material": ingredient.get("name"),
+                    "stat": effect.get("stat", "Stat"),
+                    "modifier": value,
+                    "modifier_percent": (value - 1.0) * 100.0,
+                }
+            )
+    return previews
 
 
 def evaluate_blueprint_craftability(blueprint_payload: dict[str, Any], quantity_multiplier: int = 1) -> dict[str, Any]:
@@ -463,3 +554,194 @@ def latest_sync_run() -> dict[str, Any] | None:
             """
         ).fetchone()
     return dict(row) if row else None
+
+
+def save_route(
+    *,
+    route_id: int | None,
+    name: str,
+    ship_name: str,
+    cargo_capacity: int,
+    investment_budget: int,
+    estimated_minutes: int,
+    origin: str,
+    destination: str,
+    route_steps: list[dict[str, Any]],
+    overlay_x: int,
+    overlay_y: int,
+    overlay_scale: float,
+) -> int:
+    payload = json.dumps(route_steps, ensure_ascii=True)
+    with db_cursor() as connection:
+        if route_id:
+            connection.execute(
+                """
+                UPDATE saved_routes
+                SET name=?, ship_name=?, cargo_capacity=?, investment_budget=?, estimated_minutes=?,
+                    origin=?, destination=?, route_json=?, overlay_x=?, overlay_y=?, overlay_scale=?, updated_at=?
+                WHERE id=?
+                """,
+                (
+                    name,
+                    ship_name,
+                    cargo_capacity,
+                    investment_budget,
+                    estimated_minutes,
+                    origin,
+                    destination,
+                    payload,
+                    overlay_x,
+                    overlay_y,
+                    overlay_scale,
+                    utc_now(),
+                    route_id,
+                ),
+            )
+            return route_id
+        cursor = connection.execute(
+            """
+            INSERT INTO saved_routes(
+                name, ship_name, cargo_capacity, investment_budget, estimated_minutes,
+                origin, destination, route_json, overlay_x, overlay_y, overlay_scale, updated_at
+            )
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                name,
+                ship_name,
+                cargo_capacity,
+                investment_budget,
+                estimated_minutes,
+                origin,
+                destination,
+                payload,
+                overlay_x,
+                overlay_y,
+                overlay_scale,
+                utc_now(),
+            ),
+        )
+        return int(cursor.lastrowid)
+
+
+def list_routes() -> list[dict[str, Any]]:
+    with db_cursor() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, name, ship_name, cargo_capacity, investment_budget, estimated_minutes,
+                   origin, destination, route_json, overlay_x, overlay_y, overlay_scale, updated_at
+            FROM saved_routes
+            ORDER BY updated_at DESC, name
+            """
+        ).fetchall()
+    routes = []
+    for row in rows:
+        item = dict(row)
+        item["route_steps"] = json.loads(item.pop("route_json"))
+        routes.append(item)
+    return routes
+
+
+def delete_route(route_id: int) -> None:
+    with db_cursor() as connection:
+        connection.execute("DELETE FROM saved_routes WHERE id = ?", (route_id,))
+
+
+def save_tracked_resource(
+    *,
+    resource_id: int | None,
+    name: str,
+    target_quantity: float,
+    current_quantity: float,
+    rarity: str,
+    source_notes: str,
+    session_delta: float,
+) -> int:
+    with db_cursor() as connection:
+        if resource_id:
+            connection.execute(
+                """
+                UPDATE tracked_resources
+                SET name=?, target_quantity=?, current_quantity=?, rarity=?, source_notes=?, session_delta=?, updated_at=?
+                WHERE id=?
+                """,
+                (name, target_quantity, current_quantity, rarity, source_notes, session_delta, utc_now(), resource_id),
+            )
+            return resource_id
+        cursor = connection.execute(
+            """
+            INSERT INTO tracked_resources(name, target_quantity, current_quantity, rarity, source_notes, session_delta, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            """,
+            (name, target_quantity, current_quantity, rarity, source_notes, session_delta, utc_now()),
+        )
+        return int(cursor.lastrowid)
+
+
+def list_tracked_resources() -> list[dict[str, Any]]:
+    with db_cursor() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, name, target_quantity, current_quantity, rarity, source_notes, session_delta, updated_at
+            FROM tracked_resources
+            ORDER BY updated_at DESC, name
+            """
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def delete_tracked_resource(resource_id: int) -> None:
+    with db_cursor() as connection:
+        connection.execute("DELETE FROM tracked_resources WHERE id = ?", (resource_id,))
+
+
+def save_loadout(
+    *,
+    loadout_id: int | None,
+    ship_name: str,
+    role: str,
+    loadout: dict[str, Any],
+    source_notes: str,
+) -> int:
+    payload = json.dumps(loadout, ensure_ascii=True)
+    with db_cursor() as connection:
+        if loadout_id:
+            connection.execute(
+                """
+                UPDATE saved_loadouts
+                SET ship_name=?, role=?, loadout_json=?, source_notes=?, updated_at=?
+                WHERE id=?
+                """,
+                (ship_name, role, payload, source_notes, utc_now(), loadout_id),
+            )
+            return loadout_id
+        cursor = connection.execute(
+            """
+            INSERT INTO saved_loadouts(ship_name, role, loadout_json, source_notes, updated_at)
+            VALUES(?, ?, ?, ?, ?)
+            """,
+            (ship_name, role, payload, source_notes, utc_now()),
+        )
+        return int(cursor.lastrowid)
+
+
+def list_loadouts() -> list[dict[str, Any]]:
+    with db_cursor() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, ship_name, role, loadout_json, source_notes, updated_at
+            FROM saved_loadouts
+            ORDER BY updated_at DESC, ship_name
+            """
+        ).fetchall()
+    items = []
+    for row in rows:
+        item = dict(row)
+        item["loadout"] = json.loads(item.pop("loadout_json"))
+        items.append(item)
+    return items
+
+
+def delete_loadout(loadout_id: int) -> None:
+    with db_cursor() as connection:
+        connection.execute("DELETE FROM saved_loadouts WHERE id = ?", (loadout_id,))

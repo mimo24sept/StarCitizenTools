@@ -118,6 +118,48 @@ CREATE TABLE IF NOT EXISTS inventory (
 
 CREATE INDEX IF NOT EXISTS idx_inventory_resource_name ON inventory(resource_name);
 
+CREATE TABLE IF NOT EXISTS owned_blueprints (
+    blueprint_ref INTEGER PRIMARY KEY REFERENCES blueprints(id) ON DELETE CASCADE,
+    owned INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS saved_routes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    ship_name TEXT,
+    cargo_capacity INTEGER DEFAULT 0,
+    investment_budget INTEGER DEFAULT 0,
+    estimated_minutes INTEGER DEFAULT 0,
+    origin TEXT,
+    destination TEXT,
+    route_json TEXT NOT NULL,
+    overlay_x INTEGER DEFAULT 32,
+    overlay_y INTEGER DEFAULT 32,
+    overlay_scale REAL DEFAULT 1.0,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tracked_resources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    target_quantity REAL DEFAULT 0,
+    current_quantity REAL DEFAULT 0,
+    rarity TEXT,
+    source_notes TEXT,
+    session_delta REAL DEFAULT 0,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS saved_loadouts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ship_name TEXT NOT NULL,
+    role TEXT,
+    loadout_json TEXT NOT NULL,
+    source_notes TEXT,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sync_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at TEXT NOT NULL,
