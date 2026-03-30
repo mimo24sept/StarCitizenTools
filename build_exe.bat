@@ -6,10 +6,11 @@ set "PY_DLL=C:\Users\olivi\AppData\Local\Programs\Python\Python314\DLLs"
 
 py -m ensurepip --upgrade
 py -m pip install --upgrade pip
-py -m pip install --upgrade pyinstaller
+py -m pip install --upgrade pyinstaller customtkinter pillow
 py -m PyInstaller --noconfirm --clean --onefile --windowed --name StarCitizenCraftTracker ^
   --hidden-import=tkinter ^
   --collect-submodules=tkinter ^
+  --hidden-import=customtkinter ^
   --add-data "%PY_TCL%\tcl8.6;tcl\tcl8.6" ^
   --add-data "%PY_TCL%\tk8.6;tcl\tk8.6" ^
   --add-binary "%PY_DLL%\tcl86t.dll;." ^
