@@ -379,52 +379,33 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
           </SectionCard>
         </>
       ) : (
-        <div className="split-layout craft-layout">
-          <SectionCard title="Choose blueprint">
-            <div className="toolbar-grid">
-              <input value={search} onChange={(event) => setSearch(event.target.value)} className="app-input" placeholder="Search blueprint" />
-              <select value={category} onChange={(event) => setCategory(event.target.value)} className="app-select">
-                <option value="">All categories</option>
-                {categories.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-              <select value={resource} onChange={(event) => setResource(event.target.value)} className="app-select">
-                <option value="">All materials</option>
-                {resources.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-              <label className="switch-line">
-                <input type="checkbox" checked={ownedOnly} onChange={(event) => setOwnedOnly(event.target.checked)} />
-                <span>Owned only</span>
-              </label>
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  setSearch("");
-                  setCategory("");
-                  setResource("");
-                  setOwnedOnly(false);
-                }}
-              >
-                Reset
-              </button>
-            </div>
-
-            <div className="blueprint-picker">
-              {blueprints.slice(0, 24).map((item) => (
-                <button key={item.id} className={`blueprint-picker-item ${selectedId === item.id ? "is-selected" : ""}`} onClick={() => setSelectedId(item.id)}>
-                  <strong>{item.name}</strong>
-                  <span>{item.category || "Unknown"}</span>
-                  <span>{item.owned ? "Owned" : "Not owned"}</span>
+        <div className="detail-column craft-layout-single">
+          <SectionCard title="Selected blueprint">
+            {detail ? (
+              <div className="headline-row">
+                <div>
+                  <h2 className="detail-title">{detail.name}</h2>
+                  <p className="detail-subtitle">
+                    {detail.category} - {fmtSeconds(detail.craft_time_seconds)} - Tiers {detail.tiers}
+                  </p>
+                </div>
+                <div className="button-row">
+                  <button className="secondary-button small" onClick={() => setCraftView("library")}>
+                    Back to blueprints
+                  </button>
+                  <button className="primary-button small" onClick={toggleOwned}>
+                    {detail.owned ? "Owned" : "Mark owned"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="button-row">
+                <p className="empty-text">No blueprint selected.</p>
+                <button className="secondary-button small" onClick={() => setCraftView("library")}>
+                  Choose blueprint
                 </button>
-              ))}
-            </div>
+              </div>
+            )}
           </SectionCard>
 
           <div className="detail-column">
@@ -438,8 +419,8 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                         {detail.category} - {fmtSeconds(detail.craft_time_seconds)} - Tiers {detail.tiers}
                       </p>
                     </div>
-                    <button className="primary-button small" onClick={toggleOwned}>
-                      {detail.owned ? "Owned" : "Mark owned"}
+                    <button className="secondary-button small" onClick={() => setCraftView("library")}>
+                      Change blueprint
                     </button>
                   </div>
                   <div className="toolbar-grid compact">
