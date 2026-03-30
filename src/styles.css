@@ -300,29 +300,6 @@ textarea {
   margin-top: 0;
 }
 
-.craft-overlay {
-  display: grid;
-  gap: 14px;
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transform: translateY(-28px);
-  transition: max-height 320ms ease, opacity 220ms ease, transform 240ms ease, margin-bottom 240ms ease;
-  margin-bottom: 0;
-}
-
-.craft-overlay.is-open {
-  max-height: 1600px;
-  opacity: 1;
-  transform: translateY(0);
-  margin-bottom: 14px;
-}
-
-.overlay-under {
-  position: relative;
-  z-index: 0;
-}
-
 .headline-row,
 .button-row {
   display: flex;
@@ -674,6 +651,14 @@ textarea {
 .scmdb-results {
   display: grid;
   min-width: 0;
+  align-content: start;
+}
+
+.scmdb-detail-view {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  align-content: start;
 }
 
 .scmdb-results-header {
@@ -681,6 +666,175 @@ textarea {
   align-items: center;
   justify-content: space-between;
   color: var(--muted);
+}
+
+.scmdb-detail-header {
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.scmdb-detail-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.scmdb-back {
+  justify-self: start;
+  border: 1px solid rgba(64, 87, 112, 0.42);
+  background: #0f141b;
+  color: #9bb4cc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: "Consolas", "Courier New", monospace;
+  cursor: pointer;
+}
+
+.scmdb-mission-banner {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 215, 255, 0.2);
+  background: rgba(0, 215, 255, 0.04);
+  border-radius: 8px;
+}
+
+.scmdb-mission-banner span {
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.82rem;
+}
+
+.scmdb-mission-banner strong {
+  color: var(--accent);
+}
+
+.scmdb-action-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.scmdb-preset-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.preset-chip {
+  border: 1px solid rgba(64, 87, 112, 0.42);
+  background: #0f141b;
+  color: #97a8ba;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: "Consolas", "Courier New", monospace;
+  cursor: pointer;
+}
+
+.preset-chip.is-active,
+.preset-chip:hover {
+  color: var(--accent);
+  border-color: rgba(0, 215, 255, 0.32);
+}
+
+.scmdb-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.summary-box {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(64, 87, 112, 0.3);
+  background: #10161e;
+  border-radius: 8px;
+}
+
+.summary-box span {
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.summary-box strong {
+  font-size: 1rem;
+}
+
+.segment-card-list {
+  display: grid;
+  gap: 14px;
+}
+
+.segment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.segment-material {
+  display: grid;
+  gap: 4px;
+}
+
+.segment-material span {
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.84rem;
+}
+
+.segment-state {
+  min-width: 72px;
+  text-align: center;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.82rem;
+  border: 1px solid rgba(64, 87, 112, 0.32);
+}
+
+.segment-state.is-ready {
+  color: var(--success);
+  border-color: rgba(46, 229, 143, 0.28);
+}
+
+.segment-state.is-miss {
+  color: #ff6f6f;
+  border-color: rgba(255, 111, 111, 0.24);
+}
+
+.segment-effects {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.segment-effect-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(64, 87, 112, 0.22);
+}
+
+.segment-effect-row span {
+  color: #a6b9cc;
+}
+
+.segment-effect-row strong {
+  color: var(--success);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.9rem;
 }
 
 .scmdb-grid {
@@ -988,6 +1142,10 @@ textarea {
   }
 
   .quality-slider-row {
+    grid-template-columns: 1fr;
+  }
+
+  .scmdb-summary-grid {
     grid-template-columns: 1fr;
   }
 
