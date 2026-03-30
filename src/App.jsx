@@ -390,29 +390,6 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
         </>
       ) : (
         <div className="detail-column craft-layout-single">
-          <SectionCard title="Selected blueprint">
-            {detail ? (
-              <div className="headline-row">
-                <div>
-                  <h2 className="detail-title">{detail.name}</h2>
-                  <p className="detail-subtitle">
-                    {detail.category} - {fmtSeconds(detail.craft_time_seconds)} - Tiers {detail.tiers}
-                  </p>
-                </div>
-                <button className="secondary-button small" onClick={() => setCraftView("library")}>
-                  Back to blueprints
-                </button>
-              </div>
-            ) : (
-              <div className="button-row">
-                <p className="empty-text">No blueprint selected.</p>
-                <button className="secondary-button small" onClick={() => setCraftView("library")}>
-                  Choose blueprint
-                </button>
-              </div>
-            )}
-          </SectionCard>
-
           <div className="detail-column">
             <SectionCard title="Craft overview">
               {detail ? (
