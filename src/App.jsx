@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 
 import { createDbClient } from "./dbClient";
+import { calculateBestRoutes, getCargoShips, getSystems, getTerminalLabel, getTradeTerminals, loadTradeSnapshot } from "./tradeData";
 
 const PAGE_VISUALS = {
   crafting: [
@@ -51,6 +52,14 @@ function fmtSeconds(value) {
   if (minutes && seconds) return `${minutes}m ${seconds}s`;
   if (minutes) return `${minutes}m`;
   return `${seconds}s`;
+}
+
+function fmtNumber(value) {
+  return new Intl.NumberFormat("en-US").format(toNumber(value));
+}
+
+function fmtMoney(value) {
+  return `${fmtNumber(Math.round(toNumber(value)))} aUEC`;
 }
 
 function toNumber(value, fallback = 0) {
@@ -224,7 +233,7 @@ function App() {
 
       <main className="content">
         {activePage === "crafting" && <CraftingPage db={db} version={version} refreshToken={refreshToken} visual={visuals.crafting} onMutate={triggerRefresh} />}
-        {activePage === "trade" && <TradePage db={db} refreshToken={refreshToken} visual={visuals.trade} onMutate={triggerRefresh} />}
+        {activePage === "trade" && <TradeRoutesPage visual={visuals.trade} />}
         {activePage === "loadouts" && <LoadoutsPage db={db} refreshToken={refreshToken} visual={visuals.loadouts} onMutate={triggerRefresh} />}
         {activePage === "wikelo" && <WikeloPage db={db} version={version} refreshToken={refreshToken} visual={visuals.wikelo} onMutate={triggerRefresh} />}
       </main>
@@ -799,6 +808,294 @@ function TradePage({ db, refreshToken, visual, onMutate }) {
             }}>Load selected</button>
             <button className="ghost-button" onClick={removeSelectedRoute} disabled={!selectedRouteId}>Delete selected</button>
           </div>
+        </SectionCard>
+      </div>
+    </div>
+  );
+}
+
+function TradeRoutesPage({ visual }) {
+  const [snapshot, setSnapshot] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState("");
+  const [ships, setShips] = useState([]);
+  const [terminals, setTerminals] = useState([]);
+  const [systems, setSystems] = useState([]);
+  const [results, setResults] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [form, setForm] = useState({
+    shipId: "",
+    cargoCapacity: 0,
+    budget: 500000,
+    originTerminalId: "",
+    destinationSystem: "",
+    legalityFilter: "all",
+    sortBy: "profit"
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setLoading(true);
+      const data = await loadTradeSnapshot();
+      if (!mounted) return;
+      setSnapshot(data);
+      setLoading(false);
+      setError(data ? "" : "No local trade snapshot yet. Run a sync first.");
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!snapshot) {
+      setShips([]);
+      setTerminals([]);
+      setSystems([]);
+      return;
+    }
+    const nextShips = getCargoShips(snapshot);
+    const nextTerminals = getTradeTerminals(snapshot);
+    const nextSystems = getSystems(snapshot);
+    setShips(nextShips);
+    setTerminals(nextTerminals);
+    setSystems(nextSystems);
+    setForm((current) => {
+      const selectedShip = nextShips.find((item) => (item.fullName || item.name) === current.shipId) ?? nextShips[0];
+      const selectedTerminal = nextTerminals.find((item) => String(item.id) === String(current.originTerminalId)) ?? nextTerminals[0];
+      return {
+        ...current,
+        shipId: selectedShip ? selectedShip.fullName || selectedShip.name : "",
+        cargoCapacity: current.cargoCapacity || selectedShip?.scu || 0,
+        originTerminalId: selectedTerminal ? String(selectedTerminal.id) : ""
+      };
+    });
+  }, [snapshot]);
+
+  useEffect(() => {
+    if (!snapshot) {
+      setResults([]);
+      return;
+    }
+    const nextResults = calculateBestRoutes(snapshot, {
+      cargoCapacity: form.cargoCapacity,
+      budget: form.budget,
+      originTerminalId: form.originTerminalId,
+      destinationSystem: form.destinationSystem,
+      legalityFilter: form.legalityFilter,
+      sortBy: form.sortBy
+    });
+    setResults(nextResults);
+    setSelectedIndex(0);
+  }, [snapshot, form]);
+
+  useEffect(() => {
+    const selectedShip = ships.find((item) => (item.fullName || item.name) === form.shipId);
+    if (!selectedShip) return;
+    if (Number(form.cargoCapacity) === Number(selectedShip.scu)) return;
+    setForm((current) => ({ ...current, cargoCapacity: selectedShip.scu }));
+  }, [form.shipId, ships]);
+
+  async function runTradeSync() {
+    setSyncing(true);
+    const result = await window.desktopAPI.runTradeSync();
+    setSyncing(false);
+    if (!result.ok) {
+      setError(result.error || "Trade sync failed");
+      return;
+    }
+    const data = await loadTradeSnapshot();
+    setSnapshot(data);
+    setError("");
+  }
+
+  const selectedRoute = results[selectedIndex] ?? null;
+
+  return (
+    <div className="page-shell trade-page">
+      <div className="three-column-layout trade-layout">
+        <SectionCard title="Trade calculator" className="narrow-card">
+          <div className="trade-inline-stats">
+            <span>{results.length} routes</span>
+            <span>Best {fmtMoney(results[0]?.profit ?? 0)}</span>
+            <span>{results[0]?.commodityName ?? "-"}</span>
+          </div>
+          <div className="trade-form-grid">
+            <label className="field-stack">
+              <span>Ship</span>
+              <select className="app-select" value={form.shipId} onChange={(event) => setForm((current) => ({ ...current, shipId: event.target.value }))}>
+                {ships.map((item) => {
+                  const label = item.fullName || item.name;
+                  return (
+                    <option key={label} value={label}>
+                      {label} - {item.scu} SCU
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+
+            <label className="field-stack">
+              <span>Cargo capacity</span>
+              <input className="app-input" type="number" min="1" value={form.cargoCapacity} onChange={(event) => setForm((current) => ({ ...current, cargoCapacity: Math.max(1, toNumber(event.target.value, current.cargoCapacity)) }))} />
+            </label>
+
+            <label className="field-stack">
+              <span>Budget</span>
+              <input className="app-input" type="number" min="0" value={form.budget} onChange={(event) => setForm((current) => ({ ...current, budget: Math.max(0, toNumber(event.target.value, current.budget)) }))} />
+            </label>
+
+            <label className="field-stack">
+              <span>Origin terminal</span>
+              <select className="app-select" value={form.originTerminalId} onChange={(event) => setForm((current) => ({ ...current, originTerminalId: event.target.value }))}>
+                {terminals.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {getTerminalLabel(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field-stack">
+              <span>Destination system</span>
+              <select className="app-select" value={form.destinationSystem} onChange={(event) => setForm((current) => ({ ...current, destinationSystem: event.target.value }))}>
+                <option value="">All systems</option>
+                {systems.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field-stack">
+              <span>Legality</span>
+              <select className="app-select" value={form.legalityFilter} onChange={(event) => setForm((current) => ({ ...current, legalityFilter: event.target.value }))}>
+                <option value="all">All commodities</option>
+                <option value="legal">Legal only</option>
+                <option value="illegal">Illegal only</option>
+              </select>
+            </label>
+
+            <label className="field-stack">
+              <span>Sort routes by</span>
+              <select className="app-select" value={form.sortBy} onChange={(event) => setForm((current) => ({ ...current, sortBy: event.target.value }))}>
+                <option value="profit">Total profit</option>
+                <option value="margin">Margin %</option>
+                <option value="unit">Profit / SCU</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="button-row trade-actions">
+            <button className="primary-button" onClick={runTradeSync} disabled={syncing}>
+              {syncing ? "Syncing trade..." : "Sync trade data"}
+            </button>
+            {snapshot ? <span className="summary-copy compact">Snapshot {snapshot.fetchedAt}</span> : null}
+          </div>
+          {error ? <p className="empty-text">{error}</p> : null}
+          <p className="summary-copy compact">Source: UEX public vehicles, terminals, commodities and commodity prices.</p>
+        </SectionCard>
+
+        <SectionCard title="Best routes">
+          {loading ? <p className="empty-text">Loading local trade snapshot...</p> : null}
+          {!loading && !results.length ? <p className="empty-text">No profitable route found for the current budget, ship and origin.</p> : null}
+          {!!results.length ? (
+            <div className="trade-results">
+              {results.slice(0, 24).map((item, index) => (
+                <button key={`${item.commodityId}-${item.destinationTerminalId}-${index}`} className={`trade-route-card ${selectedIndex === index ? "is-selected" : ""}`} onClick={() => setSelectedIndex(index)}>
+                  <div className="trade-route-head">
+                    <strong>{item.commodityName}</strong>
+                    <span className={`trade-pill ${item.isIllegal ? "danger" : "safe"}`}>{item.isIllegal ? "Illegal" : "Legal"}</span>
+                  </div>
+                  <div className="trade-route-path">
+                    <span className="trade-leg">{item.originName}</span>
+                    <span className="trade-arrow">-&gt;</span>
+                    <span className="trade-leg">{item.destinationName}</span>
+                  </div>
+                  <div className="trade-route-locations">
+                    <span>{item.originRegion}</span>
+                    <span>{item.destinationRegion}</span>
+                  </div>
+                  <div className="trade-route-metrics">
+                    <div className="trade-metric-block">
+                      <small>Total profit</small>
+                      <strong>{fmtMoney(item.profit)}</strong>
+                    </div>
+                    <div className="trade-metric-block">
+                      <small>Cargo fill</small>
+                      <strong>{item.quantity} SCU</strong>
+                    </div>
+                    <div className="trade-metric-block">
+                      <small>Profit / SCU</small>
+                      <strong>{fmtMoney(item.unitProfit)}</strong>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </SectionCard>
+
+        <SectionCard title="Selected route" className="narrow-card">
+          {selectedRoute ? (
+            <div className="text-panel trade-selected">
+              <strong className="trade-selected-title">{selectedRoute.commodityName}</strong>
+              <div className="trade-selected-path">
+                <span>{selectedRoute.originName}</span>
+                <span className="trade-arrow">-&gt;</span>
+                <span>{selectedRoute.destinationName}</span>
+              </div>
+              <div className="trade-selected-locations">
+                <div className="route-step">
+                  <strong>Buy at</strong>
+                  <span>{selectedRoute.originRegion}</span>
+                </div>
+                <div className="route-step">
+                  <strong>Sell at</strong>
+                  <span>{selectedRoute.destinationRegion}</span>
+                </div>
+              </div>
+              <div className="trade-stat-grid">
+                <div className="source-card">
+                  <strong>Buy price</strong>
+                  <span>{fmtMoney(selectedRoute.buyPrice)}</span>
+                </div>
+                <div className="source-card">
+                  <strong>Sell price</strong>
+                  <span>{fmtMoney(selectedRoute.sellPrice)}</span>
+                </div>
+                <div className="source-card">
+                  <strong>Profit / SCU</strong>
+                  <span>{fmtMoney(selectedRoute.unitProfit)}</span>
+                </div>
+                <div className="source-card">
+                  <strong>Total profit</strong>
+                  <span>{fmtMoney(selectedRoute.profit)}</span>
+                </div>
+                <div className="source-card">
+                  <strong>Investment</strong>
+                  <span>{fmtMoney(selectedRoute.investment)}</span>
+                </div>
+                <div className="source-card">
+                  <strong>Margin</strong>
+                  <span>{selectedRoute.marginPercent.toFixed(1)}%</span>
+                </div>
+              </div>
+              <div className="route-step">
+                <strong>Estimated fill</strong>
+                <span>{selectedRoute.quantity} SCU</span>
+                <span>
+                  Buy stock {fmtNumber(selectedRoute.availabilityScu)} / destination demand {fmtNumber(selectedRoute.destinationDemandScu)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="empty-text">Select a route to inspect the full calculation.</p>
+          )}
         </SectionCard>
       </div>
     </div>
