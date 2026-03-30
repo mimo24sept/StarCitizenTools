@@ -67,6 +67,10 @@ function queryOne(db, sql, params = []) {
   return queryAll(db, sql, params)[0] ?? null;
 }
 
+function getIngredientQualityKey(ingredient) {
+  return ingredient?.slot ?? ingredient?.name ?? "?";
+}
+
 export async function createDbClient() {
   const SQL = await initSqlJs({ locateFile: () => wasmUrl });
   const bytes = await window.desktopAPI.readBytes(DB_PATH);
@@ -206,9 +210,12 @@ export async function createDbClient() {
   }
 
   function interpolateQualityEffects(payload, quality) {
-    const q = Math.max(0, Math.min(1000, Number(quality)));
+    const qualityMap = typeof quality === "object" && quality !== null ? quality : null;
+    const defaultQuality = qualityMap ? Number(qualityMap.__default ?? 500) : Number(quality);
     const results = [];
     for (const ingredient of payload.ingredients ?? []) {
+      const rawQuality = qualityMap ? qualityMap[getIngredientQualityKey(ingredient)] ?? defaultQuality : defaultQuality;
+      const q = Math.max(0, Math.min(1000, Number(rawQuality)));
       for (const effect of ingredient.quality_effects ?? []) {
         const min = Number(effect.quality_min ?? 0);
         const max = Number(effect.quality_max ?? 1000);
