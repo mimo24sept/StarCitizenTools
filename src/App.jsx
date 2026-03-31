@@ -38,70 +38,47 @@ const TRADE_NODES = {
 const CARGO_SHIPS = ["C2 Hercules", "M2 Hercules", "Caterpillar", "Mercury Star Runner", "Freelancer MAX", "Hull A"];
 const COMBAT_SHIPS = ["Arrow", "Gladius", "Hawk", "Talon", "Hornet Mk II", "Sabre", "Scorpius"];
 const LOADOUT_SLOTS = ["Power", "Cooler", "Shield", "Quantum", "Weapons", "Missiles", "Utility"];
+const SIDEBAR_PAGES = ["crafting", "trade", "loadouts", "wikelo"];
+const SIDEBAR_ART_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg"];
+const SIDEBAR_ART_NAMES = {
+  crafting: ["crafting"],
+  trade: ["trade"],
+  loadouts: ["loadouts", "loadout"],
+  wikelo: ["wikelo"]
+};
+
 function randomVisual(page) {
   const set = PAGE_VISUALS[page];
   return set[Math.floor(Math.random() * set.length)];
 }
 
-function makeSidebarArtDataUri(page) {
-  const art = {
-    crafting: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 980">
-        <rect width="720" height="980" fill="#080808"/>
-        <g opacity="0.92">
-          <rect x="116" y="168" width="488" height="648" rx="24" fill="none" stroke="#1ee0ff" stroke-width="2"/>
-          <rect x="152" y="208" width="420" height="120" rx="10" fill="none" stroke="#f3f3f3" stroke-opacity="0.42"/>
-          <rect x="152" y="362" width="180" height="160" rx="10" fill="none" stroke="#f3f3f3" stroke-opacity="0.2"/>
-          <rect x="362" y="362" width="210" height="160" rx="10" fill="none" stroke="#f3f3f3" stroke-opacity="0.2"/>
-          <rect x="152" y="554" width="420" height="222" rx="10" fill="none" stroke="#f3f3f3" stroke-opacity="0.2"/>
-          <path d="M182 264h356M182 286h250M182 406h116M392 406h138M182 436h116M392 436h138M182 602h356M182 630h356M182 658h220" stroke="#f3f3f3" stroke-opacity="0.28" stroke-width="2"/>
-          <circle cx="514" cy="678" r="34" fill="none" stroke="#1ee0ff" stroke-width="3"/>
-          <path d="M498 678h32M514 662v32" stroke="#1ee0ff" stroke-width="3"/>
-        </g>
-      </svg>`,
-    trade: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 980">
-        <rect width="720" height="980" fill="#080808"/>
-        <g opacity="0.95">
-          <path d="M120 448c68-52 164-84 274-84 92 0 176 20 254 62l-38 42c-74-28-144-40-222-40-98 0-182 18-252 54z" fill="none" stroke="#1ee0ff" stroke-width="2"/>
-          <path d="M140 640c84-56 172-84 270-84 66 0 126 12 184 36" fill="none" stroke="#f3f3f3" stroke-opacity="0.36" stroke-width="2"/>
-          <path d="M118 510h490l-58 76H186z" fill="none" stroke="#f3f3f3" stroke-opacity="0.46" stroke-width="2"/>
-          <path d="M254 468l86-76h164l-64 76z" fill="none" stroke="#1ee0ff" stroke-width="2"/>
-          <circle cx="216" cy="704" r="18" fill="#ffb000" fill-opacity="0.14" stroke="#ffb000" stroke-width="3"/>
-          <circle cx="360" cy="628" r="18" fill="#1ee0ff" fill-opacity="0.14" stroke="#1ee0ff" stroke-width="3"/>
-          <circle cx="536" cy="566" r="18" fill="#59f58a" fill-opacity="0.14" stroke="#59f58a" stroke-width="3"/>
-          <path d="M216 704L360 628 536 566" stroke="#f3f3f3" stroke-opacity="0.34" stroke-width="3"/>
-        </g>
-      </svg>`,
-    loadouts: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 980">
-        <rect width="720" height="980" fill="#080808"/>
-        <g opacity="0.95">
-          <path d="M360 192l94 166-44 36 28 112-78-46-78 46 28-112-44-36z" fill="none" stroke="#1ee0ff" stroke-width="3"/>
-          <path d="M360 260v250M248 404h224" stroke="#f3f3f3" stroke-opacity="0.28" stroke-width="2"/>
-          <circle cx="360" cy="404" r="142" fill="none" stroke="#f3f3f3" stroke-opacity="0.16"/>
-          <circle cx="360" cy="404" r="208" fill="none" stroke="#1ee0ff" stroke-opacity="0.22"/>
-          <rect x="186" y="648" width="348" height="128" rx="18" fill="none" stroke="#f3f3f3" stroke-opacity="0.3"/>
-          <path d="M220 694h280M220 726h220" stroke="#f3f3f3" stroke-opacity="0.24" stroke-width="2"/>
-          <circle cx="502" cy="712" r="18" fill="none" stroke="#1ee0ff" stroke-width="3"/>
-        </g>
-      </svg>`,
-    wikelo: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 980">
-        <rect width="720" height="980" fill="#080808"/>
-        <g opacity="0.95">
-          <circle cx="360" cy="390" r="168" fill="none" stroke="#1ee0ff" stroke-width="3"/>
-          <circle cx="304" cy="352" r="18" fill="#f3f3f3"/>
-          <circle cx="416" cy="352" r="18" fill="#f3f3f3"/>
-          <path d="M278 458c28 42 72 62 132 62 60 0 104-20 132-62" fill="none" stroke="#f3f3f3" stroke-width="12" stroke-linecap="round"/>
-          <path d="M206 696c42-78 124-122 222-122 98 0 180 44 222 122" fill="none" stroke="#1ee0ff" stroke-opacity="0.44" stroke-width="3"/>
-          <circle cx="212" cy="710" r="14" fill="#ffb000" fill-opacity="0.16" stroke="#ffb000" stroke-width="3"/>
-          <circle cx="508" cy="710" r="14" fill="#59f58a" fill-opacity="0.16" stroke="#59f58a" stroke-width="3"/>
-        </g>
-      </svg>`
-  };
+function getDefaultSidebarArtMap() {
+  return Object.fromEntries(SIDEBAR_PAGES.map((page) => [page, getSidebarAssetUrl(`${page}.svg`)]));
+}
 
-  return `url("data:image/svg+xml,${encodeURIComponent(art[page] || art.crafting)}")`;
+function getSidebarAssetUrl(fileName) {
+  return new URL(`${import.meta.env.BASE_URL}sidebar/${fileName}`, window.location.href).toString();
+}
+
+function canLoadImage(src) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(true);
+    image.onerror = () => resolve(false);
+    image.src = src;
+  });
+}
+
+async function resolveSidebarArt(page) {
+  const candidates = SIDEBAR_ART_NAMES[page] || [page];
+  for (const name of candidates) {
+    for (const ext of SIDEBAR_ART_EXTENSIONS) {
+      const src = getSidebarAssetUrl(`${name}.${ext}`);
+      // eslint-disable-next-line no-await-in-loop
+      if (await canLoadImage(src)) return src;
+    }
+  }
+  return getSidebarAssetUrl(`${page}.svg`);
 }
 
 function fmtSeconds(value) {
@@ -199,6 +176,7 @@ function App() {
   const [version, setVersion] = useState("");
   const [activePage, setActivePage] = useState("crafting");
   const [hoveredPage, setHoveredPage] = useState("");
+  const [sidebarArtMap, setSidebarArtMap] = useState(() => getDefaultSidebarArtMap());
   const [refreshToken, setRefreshToken] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("Local data ready");
@@ -231,9 +209,29 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSidebarArt() {
+      const entries = await Promise.all(
+        SIDEBAR_PAGES.map(async (page) => [page, await resolveSidebarArt(page)])
+      );
+
+      if (!cancelled) {
+        setSidebarArtMap(Object.fromEntries(entries));
+      }
+    }
+
+    loadSidebarArt();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const triggerRefresh = () => setRefreshToken((value) => value + 1);
   const sidebarPreviewPage = hoveredPage || activePage;
-  const sidebarPreviewStyle = { "--sidebar-preview-art": makeSidebarArtDataUri(sidebarPreviewPage) };
+  const sidebarPreviewStyle = { "--sidebar-preview-art": `url("${sidebarArtMap[sidebarPreviewPage] || getSidebarAssetUrl(`${sidebarPreviewPage}.svg`)}")` };
 
   async function runSync() {
     if (!db || syncing) return;
