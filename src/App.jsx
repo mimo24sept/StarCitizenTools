@@ -38,47 +38,10 @@ const TRADE_NODES = {
 const CARGO_SHIPS = ["C2 Hercules", "M2 Hercules", "Caterpillar", "Mercury Star Runner", "Freelancer MAX", "Hull A"];
 const COMBAT_SHIPS = ["Arrow", "Gladius", "Hawk", "Talon", "Hornet Mk II", "Sabre", "Scorpius"];
 const LOADOUT_SLOTS = ["Power", "Cooler", "Shield", "Quantum", "Weapons", "Missiles", "Utility"];
-const SIDEBAR_PAGES = ["crafting", "trade", "loadouts", "wikelo"];
-const SIDEBAR_ART_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg"];
-const SIDEBAR_ART_NAMES = {
-  crafting: ["crafting"],
-  trade: ["trade"],
-  loadouts: ["loadouts", "loadout"],
-  wikelo: ["wikelo"]
-};
 
 function randomVisual(page) {
   const set = PAGE_VISUALS[page];
   return set[Math.floor(Math.random() * set.length)];
-}
-
-function getDefaultSidebarArtMap() {
-  return Object.fromEntries(SIDEBAR_PAGES.map((page) => [page, getSidebarAssetUrl(`${page}.svg`)]));
-}
-
-function getSidebarAssetUrl(fileName) {
-  return new URL(`${import.meta.env.BASE_URL}sidebar/${fileName}`, window.location.href).toString();
-}
-
-function canLoadImage(src) {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve(true);
-    image.onerror = () => resolve(false);
-    image.src = src;
-  });
-}
-
-async function resolveSidebarArt(page) {
-  const candidates = SIDEBAR_ART_NAMES[page] || [page];
-  for (const name of candidates) {
-    for (const ext of SIDEBAR_ART_EXTENSIONS) {
-      const src = getSidebarAssetUrl(`${name}.${ext}`);
-      // eslint-disable-next-line no-await-in-loop
-      if (await canLoadImage(src)) return src;
-    }
-  }
-  return getSidebarAssetUrl(`${page}.svg`);
 }
 
 function fmtSeconds(value) {
@@ -175,8 +138,6 @@ function App() {
   const [versions, setVersions] = useState([]);
   const [version, setVersion] = useState("");
   const [activePage, setActivePage] = useState("crafting");
-  const [hoveredPage, setHoveredPage] = useState("");
-  const [sidebarArtMap, setSidebarArtMap] = useState(() => getDefaultSidebarArtMap());
   const [refreshToken, setRefreshToken] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("Local data ready");
@@ -209,29 +170,7 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadSidebarArt() {
-      const entries = await Promise.all(
-        SIDEBAR_PAGES.map(async (page) => [page, await resolveSidebarArt(page)])
-      );
-
-      if (!cancelled) {
-        setSidebarArtMap(Object.fromEntries(entries));
-      }
-    }
-
-    loadSidebarArt();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const triggerRefresh = () => setRefreshToken((value) => value + 1);
-  const sidebarPreviewPage = hoveredPage || activePage;
-  const sidebarPreviewStyle = { "--sidebar-preview-art": `url("${sidebarArtMap[sidebarPreviewPage] || getSidebarAssetUrl(`${sidebarPreviewPage}.svg`)}")` };
 
   async function runSync() {
     if (!db || syncing) return;
@@ -259,8 +198,7 @@ function App() {
   return (
     <div className="app-frame">
       <div className="app-shell">
-        <aside className="sidebar" style={sidebarPreviewStyle}>
-          <div className="sidebar-media" aria-hidden="true" />
+        <aside className="sidebar">
           <div className="sidebar-header">
             <div className="brand">
               <h1>Star Citizen Companion</h1>
@@ -298,10 +236,6 @@ function App() {
                 key={key}
                 className={`nav-button ${activePage === key ? "is-active" : ""}`}
                 onClick={() => setActivePage(key)}
-                onMouseEnter={() => setHoveredPage(key)}
-                onMouseLeave={() => setHoveredPage("")}
-                onFocus={() => setHoveredPage(key)}
-                onBlur={() => setHoveredPage("")}
               >
                 <span className="nav-button-index">{String(index + 1).padStart(2, "0")}</span>
                 <span className="nav-button-copy">

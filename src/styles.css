@@ -1682,6 +1682,7 @@ body {
   grid-template-columns: 280px minmax(0, 1fr);
   min-height: calc(100vh - 24px);
   height: calc(100vh - 24px);
+  overflow: hidden;
   border: 1px solid var(--border);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
@@ -1690,38 +1691,14 @@ body {
 }
 
 .sidebar {
-  position: relative;
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 18px;
   padding: 22px 18px 18px;
   border-right: 1px solid var(--border);
-  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
     linear-gradient(180deg, #0f0f0f 0%, #090909 100%);
-}
-
-.sidebar > * {
-  position: relative;
-  z-index: 1;
-}
-
-.sidebar-media {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(180deg, rgba(8, 8, 8, 0.08) 0%, rgba(8, 8, 8, 0.58) 42%, rgba(8, 8, 8, 0.92) 100%),
-    linear-gradient(90deg, rgba(8, 8, 8, 0.86) 0%, rgba(8, 8, 8, 0.38) 48%, rgba(8, 8, 8, 0.12) 100%),
-    var(--sidebar-preview-art);
-  background-size: auto, auto, cover;
-  background-position: center, center, center;
-  background-repeat: no-repeat;
-  opacity: 0.78;
-  transition: background-image 180ms ease, opacity 180ms ease, transform 220ms ease;
-  transform: scale(1.02);
 }
 
 .sidebar-header {
