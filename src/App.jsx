@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 
 import { createDbClient } from "./dbClient";
-import { calculateBestRoutes, diversifyRoutes, getCargoShips, getSystems, getTerminalLabel, getTradeTerminals, loadTradeSnapshot } from "./tradeData";
+import { calculateBestRoutes, diversifyRoutes, getCargoShips, getSystems, getTerminalLabel, getTradeCommodities, getTradeTerminals, loadTradeSnapshot } from "./tradeData";
 
 const PAGE_VISUALS = {
   crafting: [
@@ -840,8 +840,11 @@ function TradeRoutesPage({ visual }) {
   const [ships, setShips] = useState([]);
   const [terminals, setTerminals] = useState([]);
   const [systems, setSystems] = useState([]);
+  const [commodities, setCommodities] = useState([]);
   const [results, setResults] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [preferredDraft, setPreferredDraft] = useState("");
+  const [avoidDraft, setAvoidDraft] = useState("");
   const [form, setForm] = useState({
     shipId: "",
     cargoCapacity: 0,
@@ -849,7 +852,9 @@ function TradeRoutesPage({ visual }) {
     originTerminalId: "",
     destinationSystem: "",
     legalityFilter: "all",
-    sortBy: "profit"
+    sortBy: "profit",
+    includeCommodityIds: [],
+    excludeCommodityIds: []
   });
 
   useEffect(() => {
@@ -873,14 +878,17 @@ function TradeRoutesPage({ visual }) {
       setShips([]);
       setTerminals([]);
       setSystems([]);
+      setCommodities([]);
       return;
     }
     const nextShips = getCargoShips(snapshot);
     const nextTerminals = getTradeTerminals(snapshot);
     const nextSystems = getSystems(snapshot);
+    const nextCommodities = getTradeCommodities(snapshot);
     setShips(nextShips);
     setTerminals(nextTerminals);
     setSystems(nextSystems);
+    setCommodities(nextCommodities);
     setForm((current) => {
       const selectedShip = nextShips.find((item) => (item.fullName || item.name) === current.shipId) ?? nextShips[0];
       const selectedTerminal = nextTerminals.find((item) => String(item.id) === String(current.originTerminalId));
@@ -888,7 +896,9 @@ function TradeRoutesPage({ visual }) {
         ...current,
         shipId: selectedShip ? selectedShip.fullName || selectedShip.name : "",
         cargoCapacity: current.cargoCapacity || selectedShip?.scu || 0,
-        originTerminalId: selectedTerminal ? String(selectedTerminal.id) : current.originTerminalId || ""
+        originTerminalId: selectedTerminal ? String(selectedTerminal.id) : current.originTerminalId || "",
+        includeCommodityIds: current.includeCommodityIds.filter((id) => nextCommodities.some((item) => item.id === id)),
+        excludeCommodityIds: current.excludeCommodityIds.filter((id) => nextCommodities.some((item) => item.id === id))
       };
     });
   }, [snapshot]);
@@ -904,7 +914,9 @@ function TradeRoutesPage({ visual }) {
       originTerminalId: form.originTerminalId,
       destinationSystem: form.destinationSystem,
       legalityFilter: form.legalityFilter,
-      sortBy: form.sortBy
+      sortBy: form.sortBy,
+      includeCommodityIds: form.includeCommodityIds,
+      excludeCommodityIds: form.excludeCommodityIds
     });
     setResults(nextResults);
     setSelectedIndex(0);
@@ -928,6 +940,40 @@ function TradeRoutesPage({ visual }) {
     const data = await loadTradeSnapshot();
     setSnapshot(data);
     setError("");
+  }
+
+  function resolveCommodityId(name) {
+    const normalized = name.trim().toLowerCase();
+    if (!normalized) return null;
+    return commodities.find((item) => item.name.toLowerCase() === normalized)?.id ?? null;
+  }
+
+  function addCommodityFilter(kind) {
+    const draft = kind === "includeCommodityIds" ? preferredDraft : avoidDraft;
+    const commodityId = resolveCommodityId(draft);
+    if (!commodityId) return;
+    setForm((current) => {
+      const nextValues = current[kind].includes(commodityId) ? current[kind] : [...current[kind], commodityId];
+      const oppositeKind = kind === "includeCommodityIds" ? "excludeCommodityIds" : "includeCommodityIds";
+      return {
+        ...current,
+        [kind]: nextValues,
+        [oppositeKind]: current[oppositeKind].filter((id) => id !== commodityId)
+      };
+    });
+    if (kind === "includeCommodityIds") setPreferredDraft("");
+    else setAvoidDraft("");
+  }
+
+  function removeCommodityFilter(kind, commodityId) {
+    setForm((current) => ({
+      ...current,
+      [kind]: current[kind].filter((id) => id !== commodityId)
+    }));
+  }
+
+  function getCommodityName(id) {
+    return commodities.find((item) => item.id === id)?.name ?? `Commodity ${id}`;
   }
 
   const visibleResults = diversifyRoutes(results, 2, 24);
@@ -1016,6 +1062,61 @@ function TradeRoutesPage({ visual }) {
                 <option value="unit">Profit / SCU</option>
               </select>
             </label>
+          </div>
+
+          <div className="trade-filter-block">
+            <div className="trade-chip-editor">
+              <label className="field-stack">
+                <span>Preferred commodities</span>
+                <div className="trade-chip-input-row">
+                  <input
+                    className="app-input"
+                    list="trade-commodity-options"
+                    value={preferredDraft}
+                    onChange={(event) => setPreferredDraft(event.target.value)}
+                    placeholder="Type a commodity to prefer"
+                  />
+                  <button className="secondary-button" type="button" onClick={() => addCommodityFilter("includeCommodityIds")}>Add</button>
+                </div>
+              </label>
+              <div className="trade-chip-list">
+                {form.includeCommodityIds.length ? form.includeCommodityIds.map((id) => (
+                  <button key={`include-${id}`} type="button" className="trade-filter-chip is-preferred" onClick={() => removeCommodityFilter("includeCommodityIds", id)}>
+                    <span>{getCommodityName(id)}</span>
+                    <strong>x</strong>
+                  </button>
+                )) : <span className="trade-chip-placeholder">No preferred commodity selected</span>}
+              </div>
+            </div>
+
+            <div className="trade-chip-editor">
+              <label className="field-stack">
+                <span>Avoid commodities</span>
+                <div className="trade-chip-input-row">
+                  <input
+                    className="app-input"
+                    list="trade-commodity-options"
+                    value={avoidDraft}
+                    onChange={(event) => setAvoidDraft(event.target.value)}
+                    placeholder="Type a commodity to avoid"
+                  />
+                  <button className="ghost-button" type="button" onClick={() => addCommodityFilter("excludeCommodityIds")}>Avoid</button>
+                </div>
+              </label>
+              <div className="trade-chip-list">
+                {form.excludeCommodityIds.length ? form.excludeCommodityIds.map((id) => (
+                  <button key={`exclude-${id}`} type="button" className="trade-filter-chip is-avoid" onClick={() => removeCommodityFilter("excludeCommodityIds", id)}>
+                    <span>{getCommodityName(id)}</span>
+                    <strong>x</strong>
+                  </button>
+                )) : <span className="trade-chip-placeholder">No excluded commodity selected</span>}
+              </div>
+            </div>
+            <datalist id="trade-commodity-options">
+              {commodities.map((item) => (
+                <option key={item.id} value={item.name} />
+              ))}
+            </datalist>
           </div>
 
           <div className="button-row trade-actions">

@@ -2188,6 +2188,73 @@ body {
   margin-top: 0;
 }
 
+.trade-filter-block {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.trade-chip-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.trade-chip-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.trade-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trade-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.trade-filter-chip span,
+.trade-chip-placeholder {
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.trade-filter-chip strong {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.trade-filter-chip.is-preferred {
+  border-color: rgba(0, 209, 255, 0.24);
+  background: rgba(0, 209, 255, 0.08);
+  color: var(--accent);
+}
+
+.trade-filter-chip.is-avoid {
+  border-color: rgba(255, 106, 106, 0.22);
+  background: rgba(255, 106, 106, 0.08);
+  color: #ffb4b4;
+}
+
+.trade-chip-placeholder {
+  color: var(--muted);
+}
+
 .trade-results {
   display: grid;
   gap: 10px;

@@ -38,6 +38,13 @@ export function getSystems(snapshot) {
   return Array.from(values).sort((a, b) => a.localeCompare(b));
 }
 
+export function getTradeCommodities(snapshot) {
+  const visibleCommodityIds = new Set((snapshot?.prices ?? []).map((item) => item.commodityId));
+  return (snapshot?.commodities ?? [])
+    .filter((item) => item.isVisible && item.isAvailableLive && visibleCommodityIds.has(item.id))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
 export function getTerminalLabel(terminal) {
   return terminal?.displayName || terminal?.nickname || terminal?.name || "Unknown terminal";
 }
@@ -63,6 +70,8 @@ export function calculateBestRoutes(snapshot, options) {
   const selectedSystem = options.destinationSystem || "";
   const legalityFilter = options.legalityFilter || "all";
   const sortBy = options.sortBy || "profit";
+  const includeCommodityIds = new Set((options.includeCommodityIds ?? []).map((item) => safeNumber(item)).filter(Boolean));
+  const excludeCommodityIds = new Set((options.excludeCommodityIds ?? []).map((item) => safeNumber(item)).filter(Boolean));
 
   if (!budget || !cargoCapacity) return [];
 
@@ -92,6 +101,8 @@ export function calculateBestRoutes(snapshot, options) {
     if (!originTerminal) continue;
     const commodity = commodityById.get(buy.commodityId);
     if (!commodity || !commodity.isVisible || !commodity.isAvailableLive) continue;
+    if (includeCommodityIds.size && !includeCommodityIds.has(buy.commodityId)) continue;
+    if (excludeCommodityIds.has(buy.commodityId)) continue;
     if (legalityFilter === "legal" && commodity.isIllegal) continue;
     if (legalityFilter === "illegal" && !commodity.isIllegal) continue;
 
