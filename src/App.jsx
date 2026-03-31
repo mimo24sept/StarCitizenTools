@@ -90,6 +90,7 @@ function AppState({ title, subtitle }) {
 function Hero({ visual }) {
   return (
     <section className="hero-card">
+      <div className="hero-noise" />
       <div className="hero-copy">
         <div className="brand-kicker">{visual.kicker}</div>
         <h2>{visual.title}</h2>
@@ -121,7 +122,10 @@ function SectionCard({ title, children, className = "" }) {
   return (
     <section className={`section-card ${className}`}>
       <header className="section-header">
-        <h3>{title}</h3>
+        <div className="section-title-stack">
+          <h3>{title}</h3>
+          <span className="section-rule" />
+        </div>
       </header>
       {children}
     </section>
@@ -193,50 +197,64 @@ function App() {
   if (error || !db) return <AppState title="Unable to start the app" subtitle={error || "Unknown initialization error"} />;
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-kicker">mobiGlass inspired</div>
-          <h1>Star Citizen Companion</h1>
-          <p>Modern local dashboard for crafting, trade routes, loadouts and rare-resource tracking.</p>
-        </div>
+    <div className="app-frame">
+      <div className="app-shell">
+        <aside className="sidebar">
+          <div className="sidebar-header">
+            <div className="brand">
+              <div className="brand-kicker">cassette futurist</div>
+              <h1>Star Citizen Companion</h1>
+              <p>Local flight deck for crafting, trade routes, loadouts and rare-resource tracking.</p>
+            </div>
+            <div className="sidebar-ledger">
+              <span className="ledger-pill is-live">LIVE</span>
+              <span className="ledger-pill">{version}</span>
+            </div>
+          </div>
 
-        <div className="sidebar-card">
-          <label className="control-label">Data version</label>
-          <select value={version} onChange={(event) => setVersion(event.target.value)} className="app-select">
-            {versions.map((item) => (
-              <option key={item.version} value={item.version}>
-                {item.version}
-              </option>
-            ))}
-          </select>
-          <button className="primary-button" onClick={runSync} disabled={syncing}>
-            {syncing ? "Syncing..." : "Sync crafting data"}
-          </button>
-          <p className="sidebar-status">{syncMessage}</p>
-        </div>
-
-        <nav className="nav-list">
-          {[
-            ["crafting", "Crafting"],
-            ["trade", "Trade Routes"],
-            ["loadouts", "Loadouts"],
-            ["wikelo", "Wikelo"]
-          ].map(([key, label]) => (
-            <button key={key} className={`nav-button ${activePage === key ? "is-active" : ""}`} onClick={() => setActivePage(key)}>
-              <span>{label}</span>
-              <small>{visuals[key].kicker}</small>
+          <div className="sidebar-card sidebar-sync-card">
+            <label className="control-label">Data version</label>
+            <select value={version} onChange={(event) => setVersion(event.target.value)} className="app-select">
+              {versions.map((item) => (
+                <option key={item.version} value={item.version}>
+                  {item.version}
+                </option>
+              ))}
+            </select>
+            <button className="primary-button" onClick={runSync} disabled={syncing}>
+              {syncing ? "Syncing..." : "Sync crafting data"}
             </button>
-          ))}
-        </nav>
-      </aside>
+            <p className="sidebar-status">{syncMessage}</p>
+          </div>
 
-      <main className="content">
-        {activePage === "crafting" && <CraftingPage db={db} version={version} refreshToken={refreshToken} visual={visuals.crafting} onMutate={triggerRefresh} />}
-        {activePage === "trade" && <TradeRoutesPage visual={visuals.trade} />}
-        {activePage === "loadouts" && <LoadoutsPage db={db} refreshToken={refreshToken} visual={visuals.loadouts} onMutate={triggerRefresh} />}
-        {activePage === "wikelo" && <WikeloPage db={db} version={version} refreshToken={refreshToken} visual={visuals.wikelo} onMutate={triggerRefresh} />}
-      </main>
+          <div className="sidebar-group-label">Modules</div>
+          <nav className="nav-list">
+            {[
+              ["crafting", "Crafting"],
+              ["trade", "Trade Routes"],
+              ["loadouts", "Loadouts"],
+              ["wikelo", "Wikelo"]
+            ].map(([key, label], index) => (
+              <button key={key} className={`nav-button ${activePage === key ? "is-active" : ""}`} onClick={() => setActivePage(key)}>
+                <span className="nav-button-index">{String(index + 1).padStart(2, "0")}</span>
+                <span className="nav-button-copy">
+                  <strong>{label}</strong>
+                  <small>{visuals[key].kicker}</small>
+                </span>
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="content">
+          <div className="content-frame">
+            {activePage === "crafting" && <CraftingPage db={db} version={version} refreshToken={refreshToken} visual={visuals.crafting} onMutate={triggerRefresh} />}
+            {activePage === "trade" && <TradeRoutesPage visual={visuals.trade} />}
+            {activePage === "loadouts" && <LoadoutsPage db={db} refreshToken={refreshToken} visual={visuals.loadouts} onMutate={triggerRefresh} />}
+            {activePage === "wikelo" && <WikeloPage db={db} version={version} refreshToken={refreshToken} visual={visuals.wikelo} onMutate={triggerRefresh} />}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
@@ -923,7 +941,7 @@ function TradeRoutesPage({ visual }) {
   return (
     <div className="page-shell trade-page">
       <div className="three-column-layout trade-layout">
-        <SectionCard title="Trade calculator" className="narrow-card">
+        <SectionCard title="Trade calculator" className="narrow-card trade-control-card">
           <div className="trade-inline-stats">
             <span>{results.length} routes</span>
             <span>Best {fmtMoney(results[0]?.profit ?? 0)}</span>
@@ -1009,7 +1027,7 @@ function TradeRoutesPage({ visual }) {
           <p className="summary-copy compact">Source: UEX public vehicles, terminals, commodities and commodity prices.</p>
         </SectionCard>
 
-        <SectionCard title="Best routes">
+        <SectionCard title="Best routes" className="trade-results-card">
           {loading ? <p className="empty-text">Loading local trade snapshot...</p> : null}
           {!loading && !results.length ? <p className="empty-text">No profitable route found for the current budget, ship and origin.</p> : null}
           {!!results.length ? (
@@ -1049,7 +1067,7 @@ function TradeRoutesPage({ visual }) {
           ) : null}
         </SectionCard>
 
-        <SectionCard title="Selected route" className="narrow-card">
+        <SectionCard title="Selected route" className="narrow-card trade-detail-card">
           {visibleSelectedRoute ? (
             <div className="text-panel trade-selected">
               <strong className="trade-selected-title">{visibleSelectedRoute.commodityName}</strong>
