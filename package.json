@@ -2,6 +2,8 @@
   "name": "star-citizen-tools",
   "version": "0.1.0",
   "private": true,
+  "description": "Local Star Citizen companion app for crafting, trade routes, loadouts and lightweight overlays.",
+  "author": "mimo24sept",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
@@ -10,14 +12,44 @@
     "build:web": "vite build",
     "start": "set ELECTRON_RUN_AS_NODE=&& electron .",
     "dev": "set ELECTRON_RUN_AS_NODE=&& set ELECTRON_RENDERER_URL=http://127.0.0.1:4173&& electron .",
-    "build": "vite build"
+    "build": "vite build",
+    "dist:win": "npm run build:web && electron-builder --win portable",
+    "dist:dir": "npm run build:web && electron-builder --dir"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.1",
-    "electron": "^41.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "sql.js": "^1.14.1",
     "vite": "^8.0.3"
+  },
+  "devDependencies": {
+    "electron": "^41.1.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.mimo24sept.starcitizencompanion",
+    "productName": "Star Citizen Companion",
+    "artifactName": "StarCitizenCompanion-${version}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "web-dist/**/*",
+      "electron/**/*",
+      "data/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
   }
 }

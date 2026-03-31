@@ -9,3 +9,4 @@ dist/
 Scripts/
 Lib/
 data/trade_snapshot.json
+release/
