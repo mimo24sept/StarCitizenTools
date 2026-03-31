@@ -845,6 +845,7 @@ function TradeRoutesPage({ visual }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [preferredDraft, setPreferredDraft] = useState("");
   const [avoidDraft, setAvoidDraft] = useState("");
+  const [overlayState, setOverlayState] = useState({ visible: false, progressIndex: 0, route: null });
   const [form, setForm] = useState({
     shipId: "",
     cargoCapacity: 0,
@@ -868,8 +869,15 @@ function TradeRoutesPage({ visual }) {
       setError(data ? "" : "No local trade snapshot yet. Run a sync first.");
     }
     load();
+    window.desktopAPI.getOverlayState().then((state) => {
+      if (mounted) setOverlayState(state);
+    });
+    const unsubscribe = window.desktopAPI.onOverlayState((state) => {
+      if (mounted) setOverlayState(state);
+    });
     return () => {
       mounted = false;
+      unsubscribe();
     };
   }, []);
 
@@ -974,6 +982,51 @@ function TradeRoutesPage({ visual }) {
 
   function getCommodityName(id) {
     return commodities.find((item) => item.id === id)?.name ?? `Commodity ${id}`;
+  }
+
+  function buildOverlayRoute(route) {
+    if (!route) return null;
+    return {
+      title: route.commodityName,
+      meta: [
+        `${route.quantity} SCU`,
+        fmtMoney(route.profit),
+        route.isIllegal ? "Illegal" : "Legal"
+      ],
+      steps: [
+        {
+          title: `Buy at ${route.originName}`,
+          subtitle: route.originRegion,
+          meta: `${fmtMoney(route.buyPrice)} / SCU`
+        },
+        {
+          title: `Travel to ${route.destinationName}`,
+          subtitle: route.destinationRegion,
+          meta: `${route.quantity} SCU onboard`
+        },
+        {
+          title: `Sell at ${route.destinationName}`,
+          subtitle: route.destinationRegion,
+          meta: `${fmtMoney(route.sellPrice)} / SCU`
+        }
+      ]
+    };
+  }
+
+  async function showSelectedRouteInOverlay() {
+    if (!visibleSelectedRoute) return;
+    const state = await window.desktopAPI.showOverlay(buildOverlayRoute(visibleSelectedRoute));
+    setOverlayState(state);
+  }
+
+  async function hideOverlay() {
+    const state = await window.desktopAPI.hideOverlay();
+    setOverlayState(state);
+  }
+
+  async function resetOverlayProgress() {
+    const state = await window.desktopAPI.resetOverlayProgress();
+    setOverlayState(state);
   }
 
   const visibleResults = diversifyRoutes(results, 2, 24);
@@ -1214,6 +1267,20 @@ function TradeRoutesPage({ visual }) {
                   <span>{visibleSelectedRoute.marginPercent.toFixed(1)}%</span>
                 </div>
               </div>
+              <div className="button-row trade-overlay-actions">
+                <button className="primary-button" onClick={showSelectedRouteInOverlay}>
+                  {overlayState.visible ? "Update overlay" : "Show overlay"}
+                </button>
+                <button className="secondary-button" onClick={resetOverlayProgress} disabled={!overlayState.route}>
+                  Reset overlay
+                </button>
+                <button className="ghost-button" onClick={hideOverlay} disabled={!overlayState.visible}>
+                  Hide overlay
+                </button>
+              </div>
+              <p className="summary-copy compact">
+                Overlay {overlayState.visible ? "visible" : "hidden"}{overlayState.route ? ` · step ${overlayState.progressIndex + 1}` : ""}
+              </p>
               <div className="route-step">
                 <strong>Estimated fill</strong>
                 <span>{visibleSelectedRoute.quantity} SCU</span>

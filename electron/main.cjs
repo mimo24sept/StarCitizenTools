@@ -9,6 +9,13 @@ const ROOT_DIR = path.join(__dirname, "..");
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const TRADE_SNAPSHOT_PATH = path.join(DATA_DIR, "trade_snapshot.json");
 const UEX_API_BASE = "https://api.uexcorp.uk/2.0";
+let mainWindow = null;
+let overlayWindow = null;
+const overlayState = {
+  visible: false,
+  progressIndex: 0,
+  route: null
+};
 
 async function fetchJson(endpoint) {
   const response = await fetch(`${UEX_API_BASE}/${endpoint}`);
@@ -115,8 +122,25 @@ function simplifyPrice(item) {
   };
 }
 
+function getOverlayPayload() {
+  return {
+    visible: overlayState.visible,
+    progressIndex: overlayState.progressIndex,
+    route: overlayState.route
+  };
+}
+
+function broadcastOverlayState() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("overlay:state", getOverlayPayload());
+  }
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.webContents.send("overlay:render", getOverlayPayload());
+  }
+}
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1560,
     height: 980,
     minWidth: 1280,
@@ -131,10 +155,61 @@ function createWindow() {
   });
 
   if (isDev) {
-    win.loadURL(devServerUrl);
+    mainWindow.loadURL(devServerUrl);
   } else {
-    win.loadFile(path.join(ROOT_DIR, "web-dist", "index.html"));
+    mainWindow.loadFile(path.join(ROOT_DIR, "web-dist", "index.html"));
   }
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+}
+
+function createOverlayWindow() {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    return overlayWindow;
+  }
+
+  overlayWindow = new BrowserWindow({
+    width: 360,
+    height: 260,
+    minWidth: 240,
+    minHeight: 180,
+    frame: false,
+    transparent: true,
+    hasShadow: false,
+    resizable: true,
+    movable: true,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    fullscreenable: false,
+    backgroundColor: "#00000000",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  overlayWindow.loadFile(path.join(__dirname, "overlay.html"));
+
+  overlayWindow.on("closed", () => {
+    overlayWindow = null;
+    overlayState.visible = false;
+    broadcastOverlayState();
+  });
+
+  overlayWindow.on("hide", () => {
+    overlayState.visible = false;
+    broadcastOverlayState();
+  });
+
+  overlayWindow.on("show", () => {
+    overlayState.visible = true;
+    broadcastOverlayState();
+  });
+
+  return overlayWindow;
 }
 
 ipcMain.handle("app:get-meta", async () => {
@@ -244,6 +319,47 @@ ipcMain.handle("trade:get-snapshot", async () => {
       error: String(error)
     };
   }
+});
+
+ipcMain.handle("overlay:get-state", async () => {
+  return getOverlayPayload();
+});
+
+ipcMain.handle("overlay:show", async (_event, route) => {
+  if (route) {
+    overlayState.route = route;
+    overlayState.progressIndex = 0;
+  }
+  const window = createOverlayWindow();
+  overlayState.visible = true;
+  if (!window.isVisible()) {
+    window.show();
+  }
+  window.focus();
+  broadcastOverlayState();
+  return getOverlayPayload();
+});
+
+ipcMain.handle("overlay:hide", async () => {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.hide();
+  }
+  overlayState.visible = false;
+  broadcastOverlayState();
+  return getOverlayPayload();
+});
+
+ipcMain.handle("overlay:set-progress", async (_event, progressIndex) => {
+  const maxIndex = Math.max((overlayState.route?.steps?.length ?? 1) - 1, 0);
+  overlayState.progressIndex = Math.max(0, Math.min(Number(progressIndex) || 0, maxIndex));
+  broadcastOverlayState();
+  return getOverlayPayload();
+});
+
+ipcMain.handle("overlay:reset-progress", async () => {
+  overlayState.progressIndex = 0;
+  broadcastOverlayState();
+  return getOverlayPayload();
 });
 
 app.whenReady().then(() => {

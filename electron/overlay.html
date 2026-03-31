@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trade Overlay</title>
+    <style>
+      :root {
+        --text: #eef7ff;
+        --muted: rgba(238, 247, 255, 0.68);
+        --line: rgba(0, 209, 255, 0.28);
+        --dot: #0a2733;
+        --dot-border: rgba(0, 209, 255, 0.55);
+        --dot-active: #00d1ff;
+        --dot-done: #5cf0ff;
+        --glow: rgba(0, 209, 255, 0.22);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        color: var(--text);
+        font-family: "Rajdhani", sans-serif;
+      }
+
+      body {
+        -webkit-app-region: drag;
+      }
+
+      .overlay {
+        width: 100%;
+        height: 100%;
+        padding: 10px 12px 18px;
+        display: grid;
+        grid-template-rows: 20px 1fr;
+        gap: 10px;
+      }
+
+      .drag-rail {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-app-region: drag;
+      }
+
+      .drag-rail::before {
+        content: "";
+        width: 72px;
+        height: 4px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(0, 209, 255, 0.18), rgba(0, 209, 255, 0.5), rgba(0, 209, 255, 0.18));
+        box-shadow: 0 0 14px rgba(0, 209, 255, 0.12);
+      }
+
+      .steps {
+        position: relative;
+        display: grid;
+        gap: 14px;
+        min-height: 0;
+        overflow: auto;
+        padding: 2px 6px 2px 0;
+      }
+
+      .steps::before {
+        content: "";
+        position: absolute;
+        left: 18px;
+        top: 8px;
+        bottom: 8px;
+        width: 2px;
+        background: linear-gradient(180deg, rgba(0, 209, 255, 0.52), rgba(0, 209, 255, 0.08));
+      }
+
+      .step {
+        position: relative;
+        display: grid;
+        grid-template-columns: 36px minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        background: transparent;
+        border: 0;
+        color: inherit;
+        padding: 0;
+        text-align: left;
+        cursor: pointer;
+        -webkit-app-region: no-drag;
+      }
+
+      .dot {
+        position: relative;
+        z-index: 1;
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        border: 2px solid var(--dot-border);
+        background: radial-gradient(circle at 35% 35%, rgba(0, 209, 255, 0.18), var(--dot));
+        box-shadow: 0 0 0 4px rgba(0, 209, 255, 0.04);
+      }
+
+      .step.is-complete .dot {
+        background: radial-gradient(circle at 35% 35%, rgba(92, 240, 255, 0.55), rgba(0, 209, 255, 0.32));
+        border-color: rgba(92, 240, 255, 0.92);
+        box-shadow: 0 0 0 6px rgba(92, 240, 255, 0.08), 0 0 24px rgba(92, 240, 255, 0.2);
+      }
+
+      .step.is-active .dot {
+        background: radial-gradient(circle at center, rgba(0, 209, 255, 0.95), rgba(0, 209, 255, 0.32));
+        border-color: rgba(196, 247, 255, 0.95);
+        box-shadow: 0 0 0 7px rgba(0, 209, 255, 0.09), 0 0 34px var(--glow);
+      }
+
+      .copy {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .copy strong,
+      .copy span {
+        display: block;
+        text-shadow: 0 0 16px rgba(0, 0, 0, 0.42);
+      }
+
+      .copy strong {
+        font-size: 1rem;
+        line-height: 1.02;
+        font-weight: 700;
+      }
+
+      .copy span {
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.15;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 0.92rem;
+        padding-left: 48px;
+        text-shadow: 0 0 16px rgba(0, 0, 0, 0.42);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="overlay">
+      <div class="drag-rail"></div>
+      <div class="steps" id="steps"></div>
+    </div>
+
+    <script>
+      const stepsNode = document.getElementById("steps");
+      let overlayState = { visible: false, progressIndex: 0, route: null };
+
+      function render(state) {
+        overlayState = state || overlayState;
+        const route = overlayState.route;
+        stepsNode.innerHTML = "";
+
+        if (!route || !Array.isArray(route.steps) || !route.steps.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No route selected";
+          stepsNode.appendChild(empty);
+          return;
+        }
+
+        route.steps.forEach((step, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "step";
+          if (index < overlayState.progressIndex) button.classList.add("is-complete");
+          if (index === overlayState.progressIndex) button.classList.add("is-active");
+          button.addEventListener("click", () => window.desktopAPI.setOverlayProgress(index));
+
+          const dot = document.createElement("div");
+          dot.className = "dot";
+
+          const copy = document.createElement("div");
+          copy.className = "copy";
+
+          const title = document.createElement("strong");
+          title.textContent = step.title;
+          copy.appendChild(title);
+
+          if (step.subtitle) {
+            const subtitle = document.createElement("span");
+            subtitle.textContent = step.subtitle;
+            copy.appendChild(subtitle);
+          }
+
+          button.appendChild(dot);
+          button.appendChild(copy);
+          stepsNode.appendChild(button);
+        });
+      }
+
+      window.desktopAPI.onOverlayRender(render);
+      window.desktopAPI.getOverlayState().then(render);
+    </script>
+  </body>
+</html>

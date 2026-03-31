@@ -2188,6 +2188,11 @@ body {
   margin-top: 0;
 }
 
+.trade-overlay-actions {
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
 .trade-filter-block {
   display: grid;
   gap: 12px;
