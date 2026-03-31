@@ -2636,6 +2636,16 @@ body {
   gap: 4px;
 }
 
+.trade-loop-lines {
+  display: grid;
+  gap: 6px;
+}
+
+.trade-loop-lines span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .trade-route-metrics,
 .trade-stat-grid {
   gap: 10px;
@@ -2691,6 +2701,11 @@ body {
 .trade-selected-locations,
 .route-intel {
   margin-top: 0;
+}
+
+.trade-loop-detail {
+  display: grid;
+  gap: 8px;
 }
 
 .trade-selected .route-step,

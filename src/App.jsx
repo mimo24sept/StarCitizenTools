@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 
 import { createDbClient } from "./dbClient";
-import { calculateBestRoutes, diversifyRoutes, getCargoShips, getSystems, getTerminalLabel, getTradeCommodities, getTradeTerminals, loadTradeSnapshot } from "./tradeData";
+import { calculateBestRoutes, calculateCircularRoutes, diversifyRoutes, getCargoShips, getSystems, getTerminalLabel, getTradeCommodities, getTradeTerminals, loadTradeSnapshot } from "./tradeData";
 
 const PAGE_VISUALS = {
   crafting: [
@@ -324,13 +324,8 @@ function resolveTradeBodyNode(systemName, terminalName, regionText) {
     if (includesAny(haystack, needles)) return nodeKey;
   }
 
-  const fallback = {
-    Stanton: "Stanton Star",
-    Pyro: "Pyro Star",
-    Nyx: "Nyx Star"
-  };
-
-  return fallback[systemName] || Object.keys(system.nodes)[0];
+  const fallbackNode = Object.entries(system.nodes).find(([, node]) => node.major && (node.type === "planet" || node.type === "station" || node.type === "landing" || node.type === "gateway"));
+  return fallbackNode?.[0] || Object.keys(system.nodes)[0];
 }
 
 function findSystemPath(start, goal) {
@@ -360,10 +355,22 @@ function findSystemPath(start, goal) {
 function buildTradeRouteGraph(route) {
   if (!route) return null;
 
-  const originSystem = route.originSystem || "Stanton";
-  const destinationSystem = route.destinationSystem || originSystem;
-  const systemPath = findSystemPath(originSystem, destinationSystem);
-  const systems = systemPath.filter((name, index) => systemPath.indexOf(name) === index && TRADE_MAP_SYSTEMS[name]);
+  const routeLegs = route.mode === "circular" ? route.legs : [route];
+  if (!routeLegs?.length) return null;
+
+  const originSystem = routeLegs[0].originSystem || "Stanton";
+  const destinationSystem = routeLegs[routeLegs.length - 1].destinationSystem || originSystem;
+
+  const systemWalk = [];
+  for (const leg of routeLegs) {
+    const legPath = findSystemPath(leg.originSystem || "Stanton", leg.destinationSystem || leg.originSystem || "Stanton");
+    for (const [index, systemName] of legPath.entries()) {
+      if (systemWalk.length && index === 0 && systemWalk[systemWalk.length - 1] === systemName) continue;
+      systemWalk.push(systemName);
+    }
+  }
+
+  const systems = systemWalk.filter((name, index) => systemWalk.indexOf(name) === index && TRADE_MAP_SYSTEMS[name]);
 
   const panelWidth = 328;
   const panelGap = 86;
@@ -396,22 +403,33 @@ function buildTradeRouteGraph(route) {
     }
   }
 
-  const originNodeKey = resolveTradeBodyNode(originSystem, route.originName, route.originRegion);
-  const destinationNodeKey = resolveTradeBodyNode(destinationSystem, route.destinationName, route.destinationRegion);
+  const originNodeKey = resolveTradeBodyNode(originSystem, routeLegs[0].originName, routeLegs[0].originRegion);
+  const destinationNodeKey = resolveTradeBodyNode(destinationSystem, routeLegs[routeLegs.length - 1].destinationName, routeLegs[routeLegs.length - 1].destinationRegion);
   const routeNodeIds = new Set([`${originSystem}:${originNodeKey}`, `${destinationSystem}:${destinationNodeKey}`]);
   const segments = [];
 
-  let currentNodeId = `${originSystem}:${originNodeKey}`;
+  for (const leg of routeLegs) {
+    const legOriginSystem = leg.originSystem || "Stanton";
+    const legDestinationSystem = leg.destinationSystem || legOriginSystem;
+    const legOriginNodeKey = resolveTradeBodyNode(legOriginSystem, leg.originName, leg.originRegion);
+    const legDestinationNodeKey = resolveTradeBodyNode(legDestinationSystem, leg.destinationName, leg.destinationRegion);
+    const legSystemPath = findSystemPath(legOriginSystem, legDestinationSystem);
+    let currentNodeId = `${legOriginSystem}:${legOriginNodeKey}`;
 
-  if (systems.length === 1) {
-    const destinationNodeId = `${destinationSystem}:${destinationNodeKey}`;
-    if (globalNodes.has(currentNodeId) && globalNodes.has(destinationNodeId)) {
-      segments.push({ from: currentNodeId, to: destinationNodeId, kind: "local" });
+    routeNodeIds.add(currentNodeId);
+    routeNodeIds.add(`${legDestinationSystem}:${legDestinationNodeKey}`);
+
+    if (legSystemPath.length === 1) {
+      const destinationNodeId = `${legDestinationSystem}:${legDestinationNodeKey}`;
+      if (globalNodes.has(currentNodeId) && globalNodes.has(destinationNodeId) && currentNodeId !== destinationNodeId) {
+        segments.push({ from: currentNodeId, to: destinationNodeId, kind: "local" });
+      }
+      continue;
     }
-  } else {
-    for (let index = 0; index < systems.length - 1; index += 1) {
-      const currentSystem = systems[index];
-      const nextSystem = systems[index + 1];
+
+    for (let index = 0; index < legSystemPath.length - 1; index += 1) {
+      const currentSystem = legSystemPath[index];
+      const nextSystem = legSystemPath[index + 1];
       const connection = TRADE_MAP_CONNECTIONS[currentSystem]?.[nextSystem];
       if (!connection) continue;
 
@@ -432,7 +450,7 @@ function buildTradeRouteGraph(route) {
       currentNodeId = entryNodeId;
     }
 
-    const finalNodeId = `${destinationSystem}:${destinationNodeKey}`;
+    const finalNodeId = `${legDestinationSystem}:${legDestinationNodeKey}`;
     if (globalNodes.has(currentNodeId) && globalNodes.has(finalNodeId) && currentNodeId !== finalNodeId) {
       segments.push({ from: currentNodeId, to: finalNodeId, kind: "local" });
     }
@@ -1285,6 +1303,7 @@ function TradeRoutesPage({ visual }) {
   const [avoidDraft, setAvoidDraft] = useState("");
   const [overlayState, setOverlayState] = useState({ visible: false, progressIndex: 0, route: null });
   const [form, setForm] = useState({
+    routeMode: "single",
     shipId: "",
     cargoCapacity: 0,
     budget: 500000,
@@ -1354,7 +1373,7 @@ function TradeRoutesPage({ visual }) {
       setResults([]);
       return;
     }
-    const nextResults = calculateBestRoutes(snapshot, {
+    const routeOptions = {
       cargoCapacity: form.cargoCapacity,
       budget: form.budget,
       originTerminalId: form.originTerminalId,
@@ -1363,7 +1382,10 @@ function TradeRoutesPage({ visual }) {
       sortBy: form.sortBy,
       includeCommodityIds: form.includeCommodityIds,
       excludeCommodityIds: form.excludeCommodityIds
-    });
+    };
+    const nextResults = form.routeMode === "circular"
+      ? calculateCircularRoutes(snapshot, routeOptions)
+      : calculateBestRoutes(snapshot, routeOptions);
     setResults(nextResults);
     setSelectedIndex(0);
   }, [snapshot, form]);
@@ -1424,6 +1446,28 @@ function TradeRoutesPage({ visual }) {
 
   function buildOverlayRoute(route) {
     if (!route) return null;
+    if (route.mode === "circular") {
+      return {
+        title: "Circular route",
+        meta: [
+          `${route.legs.length} legs`,
+          fmtMoney(route.profit),
+          route.isIllegal ? "Illegal" : "Legal"
+        ],
+        steps: route.legs.flatMap((leg, index) => ([
+          {
+            title: `Leg ${index + 1} · Buy ${leg.commodityName}`,
+            subtitle: leg.originRegion,
+            meta: `${fmtMoney(leg.buyPrice)} / SCU`
+          },
+          {
+            title: `Leg ${index + 1} · Sell at ${leg.destinationName}`,
+            subtitle: leg.destinationRegion,
+            meta: `${fmtMoney(leg.sellPrice)} / SCU`
+          }
+        ]))
+      };
+    }
     return {
       title: route.commodityName,
       meta: [
@@ -1467,7 +1511,7 @@ function TradeRoutesPage({ visual }) {
     setOverlayState(state);
   }
 
-  const visibleResults = diversifyRoutes(results, 2, 24);
+  const visibleResults = form.routeMode === "circular" ? results.slice(0, 24) : diversifyRoutes(results, 2, 24);
   const visibleSelectedRoute = visibleResults[selectedIndex] ?? null;
 
   useEffect(() => {
@@ -1504,9 +1548,17 @@ function TradeRoutesPage({ visual }) {
           <div className="trade-inline-stats">
             <span>{results.length} routes</span>
             <span>Best {fmtMoney(results[0]?.profit ?? 0)}</span>
-            <span>{visibleResults[0]?.commodityName ?? "-"}</span>
+            <span>{form.routeMode === "circular" ? `${visibleResults[0]?.legs?.length ?? 0} leg loop` : visibleResults[0]?.commodityName ?? "-"}</span>
           </div>
           <div className="trade-form-grid">
+            <label className="field-stack">
+              <span>Route mode</span>
+              <select className="app-select" value={form.routeMode} onChange={(event) => setForm((current) => ({ ...current, routeMode: event.target.value }))}>
+                <option value="single">Simple route</option>
+                <option value="circular">Circular route</option>
+              </select>
+            </label>
+
             <label className="field-stack">
               <span>Ship</span>
               <input
@@ -1644,36 +1696,57 @@ function TradeRoutesPage({ visual }) {
 
         <SectionCard title="Best routes" className="trade-results-card">
           {loading ? <p className="empty-text">Loading local trade snapshot...</p> : null}
-          {!loading && !results.length ? <p className="empty-text">No profitable route found for the current budget, ship and origin.</p> : null}
+          {!loading && !results.length ? <p className="empty-text">No profitable {form.routeMode === "circular" ? "loop" : "route"} found for the current budget, ship and origin.</p> : null}
           {!!results.length ? (
             <div className="trade-results">
               {visibleResults.map((item, index) => (
-                <button key={`${item.commodityId}-${item.destinationTerminalId}-${index}`} className={`trade-route-card ${selectedIndex === index ? "is-selected" : ""}`} onClick={() => setSelectedIndex(index)}>
+                <button key={`${item.mode || "single"}-${item.originTerminalId}-${item.destinationTerminalId}-${index}`} className={`trade-route-card ${selectedIndex === index ? "is-selected" : ""}`} onClick={() => setSelectedIndex(index)}>
                   <div className="trade-route-head">
-                    <strong>{item.commodityName}</strong>
-                    <span className={`trade-pill ${item.isIllegal ? "danger" : "safe"}`}>{item.isIllegal ? "Illegal" : "Legal"}</span>
+                    <strong>{item.mode === "circular" ? "Circular loop" : item.commodityName}</strong>
+                    <span className={`trade-pill ${item.isIllegal ? "danger" : "safe"}`}>{item.mode === "circular" ? "Loop" : item.isIllegal ? "Illegal" : "Legal"}</span>
                   </div>
-                  <div className="trade-route-path">
-                    <span className="trade-leg">{item.originName}</span>
-                    <span className="trade-arrow">-&gt;</span>
-                    <span className="trade-leg">{item.destinationName}</span>
-                  </div>
-                  <div className="trade-route-locations">
-                    <span>{item.originRegion}</span>
-                    <span>{item.destinationRegion}</span>
-                  </div>
+                  {item.mode === "circular" ? (
+                    <>
+                      <div className="trade-route-path">
+                        <span className="trade-leg">{item.legs[0]?.originName}</span>
+                        <span className="trade-arrow">-&gt;</span>
+                        <span className="trade-leg">{item.legs[0]?.destinationName}</span>
+                        <span className="trade-arrow">-&gt;</span>
+                        <span className="trade-leg">{item.legs[1]?.destinationName}</span>
+                        <span className="trade-arrow">-&gt;</span>
+                        <span className="trade-leg">{item.legs[2]?.destinationName}</span>
+                      </div>
+                      <div className="trade-route-locations trade-loop-lines">
+                        {item.legs.map((leg, legIndex) => (
+                          <span key={`loop-${index}-${legIndex}`}>Leg {legIndex + 1}: {leg.commodityName} · {leg.originName} → {leg.destinationName}</span>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="trade-route-path">
+                        <span className="trade-leg">{item.originName}</span>
+                        <span className="trade-arrow">-&gt;</span>
+                        <span className="trade-leg">{item.destinationName}</span>
+                      </div>
+                      <div className="trade-route-locations">
+                        <span>{item.originRegion}</span>
+                        <span>{item.destinationRegion}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="trade-route-metrics">
                     <div className="trade-metric-block">
                       <small>Total profit</small>
                       <strong>{fmtMoney(item.profit)}</strong>
                     </div>
                     <div className="trade-metric-block">
-                      <small>Cargo fill</small>
-                      <strong>{item.quantity} SCU</strong>
+                      <small>{item.mode === "circular" ? "Loop size" : "Cargo fill"}</small>
+                      <strong>{item.mode === "circular" ? `${item.legs.length} legs` : `${item.quantity} SCU`}</strong>
                     </div>
                     <div className="trade-metric-block">
-                      <small>Profit / SCU</small>
-                      <strong>{fmtMoney(item.unitProfit)}</strong>
+                      <small>{item.mode === "circular" ? "Avg / leg" : "Profit / SCU"}</small>
+                      <strong>{fmtMoney(item.mode === "circular" ? item.avgLegProfit : item.unitProfit)}</strong>
                     </div>
                   </div>
                 </button>
@@ -1685,41 +1758,80 @@ function TradeRoutesPage({ visual }) {
         <SectionCard title="Selected route" className="narrow-card trade-detail-card">
           {visibleSelectedRoute ? (
             <div className="text-panel trade-selected">
-              <strong className="trade-selected-title">{visibleSelectedRoute.commodityName}</strong>
-              <div className="trade-selected-path">
-                <span>{visibleSelectedRoute.originName}</span>
-                <span className="trade-arrow">-&gt;</span>
-                <span>{visibleSelectedRoute.destinationName}</span>
-              </div>
-              <div className="trade-selected-locations">
-                <div className="route-step">
-                  <strong>Buy at</strong>
-                  <span>{visibleSelectedRoute.originRegion}</span>
-                </div>
-                <div className="route-step">
-                  <strong>Sell at</strong>
-                  <span>{visibleSelectedRoute.destinationRegion}</span>
-                </div>
-              </div>
+              <strong className="trade-selected-title">{visibleSelectedRoute.mode === "circular" ? "Circular loop" : visibleSelectedRoute.commodityName}</strong>
+              {visibleSelectedRoute.mode === "circular" ? (
+                <>
+                  <div className="trade-selected-path">
+                    <span>{visibleSelectedRoute.loopLabel}</span>
+                  </div>
+                  <div className="trade-selected-locations trade-loop-detail">
+                    {visibleSelectedRoute.legs.map((leg, index) => (
+                      <div className="route-step" key={`selected-loop-${index}`}>
+                        <strong>Leg {index + 1}</strong>
+                        <span>{leg.commodityName}</span>
+                        <span>{leg.originName} → {leg.destinationName}</span>
+                        <span>{fmtMoney(leg.profit)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="trade-selected-path">
+                    <span>{visibleSelectedRoute.originName}</span>
+                    <span className="trade-arrow">-&gt;</span>
+                    <span>{visibleSelectedRoute.destinationName}</span>
+                  </div>
+                  <div className="trade-selected-locations">
+                    <div className="route-step">
+                      <strong>Buy at</strong>
+                      <span>{visibleSelectedRoute.originRegion}</span>
+                    </div>
+                    <div className="route-step">
+                      <strong>Sell at</strong>
+                      <span>{visibleSelectedRoute.destinationRegion}</span>
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="trade-stat-grid">
-                <div className="source-card">
-                  <strong>Buy price</strong>
-                  <span>{fmtMoney(visibleSelectedRoute.buyPrice)}</span>
-                </div>
-                <div className="source-card">
-                  <strong>Sell price</strong>
-                  <span>{fmtMoney(visibleSelectedRoute.sellPrice)}</span>
-                </div>
-                <div className="source-card">
-                  <strong>Profit / SCU</strong>
-                  <span>{fmtMoney(visibleSelectedRoute.unitProfit)}</span>
-                </div>
+                {visibleSelectedRoute.mode === "circular" ? (
+                  <>
+                    <div className="source-card">
+                      <strong>Starting funds</strong>
+                      <span>{fmtMoney(form.budget)}</span>
+                    </div>
+                    <div className="source-card">
+                      <strong>Ending funds</strong>
+                      <span>{fmtMoney(visibleSelectedRoute.endingFunds)}</span>
+                    </div>
+                    <div className="source-card">
+                      <strong>Avg profit / leg</strong>
+                      <span>{fmtMoney(visibleSelectedRoute.avgLegProfit)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="source-card">
+                      <strong>Buy price</strong>
+                      <span>{fmtMoney(visibleSelectedRoute.buyPrice)}</span>
+                    </div>
+                    <div className="source-card">
+                      <strong>Sell price</strong>
+                      <span>{fmtMoney(visibleSelectedRoute.sellPrice)}</span>
+                    </div>
+                    <div className="source-card">
+                      <strong>Profit / SCU</strong>
+                      <span>{fmtMoney(visibleSelectedRoute.unitProfit)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="source-card">
                   <strong>Total profit</strong>
                   <span>{fmtMoney(visibleSelectedRoute.profit)}</span>
                 </div>
                 <div className="source-card">
-                  <strong>Investment</strong>
+                  <strong>{visibleSelectedRoute.mode === "circular" ? "Loop investment" : "Investment"}</strong>
                   <span>{fmtMoney(visibleSelectedRoute.investment)}</span>
                 </div>
                 <div className="source-card">
@@ -1745,10 +1857,12 @@ function TradeRoutesPage({ visual }) {
                 Overlay {overlayState.visible ? "visible" : "hidden"}{overlayState.route ? ` · step ${overlayState.progressIndex + 1}` : ""}
               </p>
               <div className="trade-estimate-card">
-                <div className="trade-estimate-title">Estimated fill</div>
+                <div className="trade-estimate-title">{visibleSelectedRoute.mode === "circular" ? "Loop capacity floor" : "Estimated fill"}</div>
                 <div className="trade-estimate-value">{visibleSelectedRoute.quantity} SCU</div>
                 <div className="trade-estimate-meta">
-                  Buy stock {fmtNumber(visibleSelectedRoute.availabilityScu)} / destination demand {fmtNumber(visibleSelectedRoute.destinationDemandScu)}
+                  {visibleSelectedRoute.mode === "circular"
+                    ? `${visibleSelectedRoute.commodityCount} commodity types / ${visibleSelectedRoute.legs.length} trade legs`
+                    : `Buy stock ${fmtNumber(visibleSelectedRoute.availabilityScu)} / destination demand ${fmtNumber(visibleSelectedRoute.destinationDemandScu)}`}
                 </div>
               </div>
             </div>
