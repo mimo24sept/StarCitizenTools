@@ -354,12 +354,16 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 90px;
-  border-radius: 8px;
+  min-width: 78px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
   background: rgba(0, 215, 255, 0.08);
   border: 1px solid rgba(0, 215, 255, 0.18);
   color: var(--accent);
   font-weight: 700;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.86rem;
 }
 
 .quality-slider-list {
@@ -379,18 +383,22 @@ textarea {
   border: 1px solid rgba(64, 87, 112, 0.36);
 }
 
+.compact-quality-row {
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 .quality-slider-copy {
   display: grid;
-  gap: 3px;
+  gap: 0;
 }
 
 .quality-slider-copy strong {
-  font-size: 0.9rem;
-}
-
-.quality-slider-copy span {
-  color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.62rem;
 }
 
 .brutalist-stepper {
@@ -402,6 +410,28 @@ textarea {
 
 .brutalist-stepper.wide {
   min-width: 0;
+}
+
+.segment-quality-controls {
+  display: grid;
+  grid-template-columns: minmax(112px, 1fr) 72px 126px;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.segment-quality-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-family: "Consolas", "Courier New", monospace;
+  font-weight: 700;
 }
 
 .stepper-button,
@@ -427,6 +457,7 @@ textarea {
 .stepper-input {
   width: 100%;
   min-height: 34px;
+  min-width: 68px;
   border: 0;
   background: transparent;
   color: var(--text);
@@ -441,12 +472,16 @@ textarea {
   gap: 6px;
 }
 
+.segment-preset-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .mini-preset {
   border: 1px solid rgba(64, 87, 112, 0.42);
   background: #0f141b;
   color: #97a8ba;
-  min-height: 34px;
-  border-radius: 0;
+  min-height: 38px;
+  border-radius: 10px;
   cursor: pointer;
 }
 
@@ -760,8 +795,8 @@ textarea {
 
 .scmdb-detail-view {
   display: grid;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 5px;
+  padding: 5px 7px;
   align-content: start;
   overflow: auto;
 }
@@ -774,13 +809,13 @@ textarea {
 }
 
 .scmdb-detail-header {
-  padding: 0 0 8px;
+  padding: 0 0 5px;
   border-bottom: 1px solid var(--border);
 }
 
 .scmdb-detail-heading {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .scmdb-back {
@@ -788,10 +823,11 @@ textarea {
   border: 1px solid rgba(64, 87, 112, 0.42);
   background: #0f141b;
   color: #9bb4cc;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 6px;
   font-family: "Consolas", "Courier New", monospace;
   cursor: pointer;
+  font-size: 0.74rem;
 }
 
 .scmdb-mission-banner {
@@ -816,124 +852,183 @@ textarea {
 
 .scmdb-action-row {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 
-.scmdb-setup-grid {
+.craft-setup-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
-  gap: 12px;
-  align-items: start;
+  gap: 4px;
 }
 
-.scmdb-setup-main {
-  display: grid;
-  gap: 10px;
+.craft-action-row {
+  margin-bottom: 0;
 }
 
-.compact-crafting-toolbar {
-  grid-template-columns: 110px minmax(0, 1fr) 170px;
+.craft-setup-card {
+  gap: 4px;
+  padding: 6px 8px;
 }
 
-.scmdb-preset-row {
-  display: flex;
-  gap: 8px;
+.craft-setup-meta {
+  display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-}
-
-.preset-chip {
-  border: 1px solid rgba(64, 87, 112, 0.42);
-  background: #0f141b;
-  color: #97a8ba;
-  border-radius: 0;
-  padding: 8px 10px;
+  min-height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted);
   font-family: "Consolas", "Courier New", monospace;
-  cursor: pointer;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.preset-chip.is-active,
-.preset-chip:hover {
-  color: var(--accent);
-  border-color: rgba(0, 215, 255, 0.32);
+.craft-setup-grid {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 640px);
+  gap: 6px;
+  align-items: center;
+  justify-content: start;
+}
+
+.craft-quantity-field .app-input {
+  min-height: 24px;
+  padding: 6px 8px;
+  font-size: 0.82rem;
+}
+
+.craft-quantity-field span {
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.craft-global-panel {
+  display: grid;
+  gap: 2px;
+  max-width: 640px;
+}
+
+.craft-slider-shell,
+.segment-slider-shell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.craft-slider-row,
+.segment-slider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px;
+  gap: 6px;
+  align-items: center;
+}
+
+.craft-range {
+  width: 100%;
+  height: 10px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.craft-range-input,
+.segment-quality-input {
+  min-height: 20px;
+  padding: 1px 8px;
+  text-align: center;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.craft-range-scale,
+.segment-slider-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.04em;
+}
+
+.craft-global-label {
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .segment-card-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 5px;
+}
+
+.segment-card {
+  gap: 7px;
+  padding: 12px;
+}
+
+.segment-card .section-header {
+  display: none;
 }
 
 .segment-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
+  justify-content: flex-start;
+  gap: 4px;
+  margin-bottom: 0;
 }
 
 .segment-material {
   display: grid;
   gap: 4px;
+  min-width: 0;
+}
+
+.segment-material strong {
+  font-size: 0.98rem;
+  line-height: 1.05;
 }
 
 .segment-material span {
   color: var(--muted);
   font-family: "Consolas", "Courier New", monospace;
-  font-size: 0.78rem;
-}
-
-.segment-state {
-  min-width: 72px;
-  text-align: center;
-  padding: 6px 8px;
-  border-radius: 6px;
-  font-family: "Consolas", "Courier New", monospace;
-  font-size: 0.82rem;
-  border: 1px solid rgba(64, 87, 112, 0.32);
-}
-
-.segment-state.is-ready {
-  color: var(--success);
-  border-color: rgba(46, 229, 143, 0.28);
-}
-
-.segment-state.is-miss {
-  color: #ff6f6f;
-  border-color: rgba(255, 111, 111, 0.24);
-}
-
-.segment-state.is-info {
-  color: var(--accent);
-  border-color: rgba(0, 215, 255, 0.24);
+  font-size: 0.68rem;
 }
 
 .segment-effects {
   display: grid;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 0;
 }
 
 .segment-effect-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding-top: 6px;
+  gap: 5px;
+  padding-top: 4px;
   border-top: 1px solid rgba(64, 87, 112, 0.22);
 }
 
 .segment-effect-row span {
   color: #a6b9cc;
+  font-size: 0.72rem;
 }
 
 .segment-effect-row strong {
   color: var(--success);
   font-family: "Consolas", "Courier New", monospace;
-  font-size: 0.82rem;
+  font-size: 0.7rem;
 }
 
 .scmdb-grid {
@@ -1050,7 +1145,7 @@ textarea {
 .scmdb-mission-inline {
   display: grid;
   gap: 4px;
-  padding: 10px 12px;
+  padding: 7px 9px;
   border: 1px solid rgba(183, 133, 255, 0.2);
   background: rgba(183, 133, 255, 0.05);
   border-radius: 8px;
@@ -1064,7 +1159,7 @@ textarea {
 
 .scmdb-mission-inline strong {
   color: #d8c1ff;
-  font-size: 0.96rem;
+  font-size: 0.84rem;
 }
 
 .scmdb-card-footer {
@@ -1297,8 +1392,9 @@ textarea {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  gap: 6px;
+  gap: 12px;
   padding-right: 4px;
+  padding-bottom: 10px;
 }
 
 .trade-selected.text-panel {
@@ -1323,16 +1419,62 @@ textarea {
 }
 
 .trade-selected .route-step {
-  padding: 10px;
+  padding: 14px;
 }
 
 .trade-selected .source-card {
-  padding: 10px;
+  padding: 14px;
 }
 
 .trade-selected .source-card span {
   font-size: 0.96rem;
   color: var(--text);
+}
+
+.trade-selected .route-step strong,
+.trade-selected .source-card strong {
+  display: block;
+  margin-bottom: 8px;
+  line-height: 1.05;
+}
+
+.trade-selected .route-step span {
+  display: block;
+  line-height: 1.35;
+}
+
+.trade-selected .route-step span + span {
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.trade-estimate-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--panel-alt);
+}
+
+.trade-estimate-title {
+  color: var(--text);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.trade-estimate-value {
+  color: var(--text);
+  font-size: 1.06rem;
+  line-height: 1.1;
+}
+
+.trade-estimate-meta {
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .route-map {
@@ -1423,7 +1565,9 @@ textarea {
 .primary-button.small,
 .secondary-button.small,
 .ghost-button.small {
-  padding: 10px 14px;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 0.8rem;
 }
 
 .switch-line {
@@ -1546,33 +1690,48 @@ body {
 }
 
 .sidebar {
+  position: relative;
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 18px;
   padding: 22px 18px 18px;
   border-right: 1px solid var(--border);
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
     linear-gradient(180deg, #0f0f0f 0%, #090909 100%);
 }
 
-.sidebar-header {
-  display: grid;
-  gap: 14px;
+.sidebar > * {
+  position: relative;
+  z-index: 1;
 }
 
-.brand {
+.sidebar-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(180deg, rgba(8, 8, 8, 0.08) 0%, rgba(8, 8, 8, 0.58) 42%, rgba(8, 8, 8, 0.92) 100%),
+    linear-gradient(90deg, rgba(8, 8, 8, 0.86) 0%, rgba(8, 8, 8, 0.38) 48%, rgba(8, 8, 8, 0.12) 100%),
+    var(--sidebar-preview-art);
+  background-size: auto, auto, cover;
+  background-position: center, center, center;
+  background-repeat: no-repeat;
+  opacity: 0.78;
+  transition: background-image 180ms ease, opacity 180ms ease, transform 220ms ease;
+  transform: scale(1.02);
+}
+
+.sidebar-header {
   display: grid;
   gap: 10px;
 }
 
-.brand-kicker {
-  color: var(--accent);
-  font-family: "Consolas", "Courier New", monospace;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+.brand {
+  display: grid;
+  gap: 0;
 }
 
 .brand h1,
@@ -1587,13 +1746,6 @@ body {
   margin: 0;
   font-size: 2rem;
   line-height: 0.95;
-}
-
-.brand p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 1.06rem;
-  line-height: 1.25;
 }
 
 .sidebar-ledger {
@@ -1697,21 +1849,13 @@ body {
 }
 
 .nav-button-copy {
-  display: grid;
-  gap: 2px;
+  display: block;
   min-width: 0;
 }
 
 .nav-button-copy strong {
   font-size: 1.12rem;
   font-weight: 700;
-}
-
-.nav-button-copy small {
-  color: var(--muted);
-  font-family: "Consolas", "Courier New", monospace;
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
 }
 
 .nav-button.is-active .nav-button-index,
@@ -2442,6 +2586,13 @@ body {
   }
 
   .hero-card {
+    grid-template-columns: 1fr;
+  }
+
+  .craft-setup-grid,
+  .craft-global-controls,
+  .segment-quality-controls,
+  .scmdb-preset-row {
     grid-template-columns: 1fr;
   }
 }

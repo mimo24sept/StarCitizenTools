@@ -38,11 +38,70 @@ const TRADE_NODES = {
 const CARGO_SHIPS = ["C2 Hercules", "M2 Hercules", "Caterpillar", "Mercury Star Runner", "Freelancer MAX", "Hull A"];
 const COMBAT_SHIPS = ["Arrow", "Gladius", "Hawk", "Talon", "Hornet Mk II", "Sabre", "Scorpius"];
 const LOADOUT_SLOTS = ["Power", "Cooler", "Shield", "Quantum", "Weapons", "Missiles", "Utility"];
-const QUALITY_PRESETS = [0, 250, 500, 750, 1000];
-
 function randomVisual(page) {
   const set = PAGE_VISUALS[page];
   return set[Math.floor(Math.random() * set.length)];
+}
+
+function makeSidebarArtDataUri(page) {
+  const art = {
+    crafting: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 980">
+        <rect width="720" height="980" fill="#080808"/>
+        <g opacity="0.92">
+          <rect x="116" y="168" width="488" height="648" rx="24" fill="none" stroke="#1ee0ff" stroke-width="2"/>
+          <rect x="152" y="208" width="420" height="120" rx="10" fill="none" stroke="#f3f3f3" stroke-opacity="0.42"/>
+          <rect x="152" y="362" width="180" height="160" rx="10" fill="none" stroke="#f3f3f3" stroke-opacity="0.2"/>
+          <rect x="362" y="362" width="210" height="160" rx="10" fill="none" stroke="#f3f3f3" stroke-opacity="0.2"/>
+          <rect x="152" y="554" width="420" height="222" rx="10" fill="none" stroke="#f3f3f3" stroke-opacity="0.2"/>
+          <path d="M182 264h356M182 286h250M182 406h116M392 406h138M182 436h116M392 436h138M182 602h356M182 630h356M182 658h220" stroke="#f3f3f3" stroke-opacity="0.28" stroke-width="2"/>
+          <circle cx="514" cy="678" r="34" fill="none" stroke="#1ee0ff" stroke-width="3"/>
+          <path d="M498 678h32M514 662v32" stroke="#1ee0ff" stroke-width="3"/>
+        </g>
+      </svg>`,
+    trade: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 980">
+        <rect width="720" height="980" fill="#080808"/>
+        <g opacity="0.95">
+          <path d="M120 448c68-52 164-84 274-84 92 0 176 20 254 62l-38 42c-74-28-144-40-222-40-98 0-182 18-252 54z" fill="none" stroke="#1ee0ff" stroke-width="2"/>
+          <path d="M140 640c84-56 172-84 270-84 66 0 126 12 184 36" fill="none" stroke="#f3f3f3" stroke-opacity="0.36" stroke-width="2"/>
+          <path d="M118 510h490l-58 76H186z" fill="none" stroke="#f3f3f3" stroke-opacity="0.46" stroke-width="2"/>
+          <path d="M254 468l86-76h164l-64 76z" fill="none" stroke="#1ee0ff" stroke-width="2"/>
+          <circle cx="216" cy="704" r="18" fill="#ffb000" fill-opacity="0.14" stroke="#ffb000" stroke-width="3"/>
+          <circle cx="360" cy="628" r="18" fill="#1ee0ff" fill-opacity="0.14" stroke="#1ee0ff" stroke-width="3"/>
+          <circle cx="536" cy="566" r="18" fill="#59f58a" fill-opacity="0.14" stroke="#59f58a" stroke-width="3"/>
+          <path d="M216 704L360 628 536 566" stroke="#f3f3f3" stroke-opacity="0.34" stroke-width="3"/>
+        </g>
+      </svg>`,
+    loadouts: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 980">
+        <rect width="720" height="980" fill="#080808"/>
+        <g opacity="0.95">
+          <path d="M360 192l94 166-44 36 28 112-78-46-78 46 28-112-44-36z" fill="none" stroke="#1ee0ff" stroke-width="3"/>
+          <path d="M360 260v250M248 404h224" stroke="#f3f3f3" stroke-opacity="0.28" stroke-width="2"/>
+          <circle cx="360" cy="404" r="142" fill="none" stroke="#f3f3f3" stroke-opacity="0.16"/>
+          <circle cx="360" cy="404" r="208" fill="none" stroke="#1ee0ff" stroke-opacity="0.22"/>
+          <rect x="186" y="648" width="348" height="128" rx="18" fill="none" stroke="#f3f3f3" stroke-opacity="0.3"/>
+          <path d="M220 694h280M220 726h220" stroke="#f3f3f3" stroke-opacity="0.24" stroke-width="2"/>
+          <circle cx="502" cy="712" r="18" fill="none" stroke="#1ee0ff" stroke-width="3"/>
+        </g>
+      </svg>`,
+    wikelo: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 980">
+        <rect width="720" height="980" fill="#080808"/>
+        <g opacity="0.95">
+          <circle cx="360" cy="390" r="168" fill="none" stroke="#1ee0ff" stroke-width="3"/>
+          <circle cx="304" cy="352" r="18" fill="#f3f3f3"/>
+          <circle cx="416" cy="352" r="18" fill="#f3f3f3"/>
+          <path d="M278 458c28 42 72 62 132 62 60 0 104-20 132-62" fill="none" stroke="#f3f3f3" stroke-width="12" stroke-linecap="round"/>
+          <path d="M206 696c42-78 124-122 222-122 98 0 180 44 222 122" fill="none" stroke="#1ee0ff" stroke-opacity="0.44" stroke-width="3"/>
+          <circle cx="212" cy="710" r="14" fill="#ffb000" fill-opacity="0.16" stroke="#ffb000" stroke-width="3"/>
+          <circle cx="508" cy="710" r="14" fill="#59f58a" fill-opacity="0.16" stroke="#59f58a" stroke-width="3"/>
+        </g>
+      </svg>`
+  };
+
+  return `url("data:image/svg+xml,${encodeURIComponent(art[page] || art.crafting)}")`;
 }
 
 function fmtSeconds(value) {
@@ -139,6 +198,7 @@ function App() {
   const [versions, setVersions] = useState([]);
   const [version, setVersion] = useState("");
   const [activePage, setActivePage] = useState("crafting");
+  const [hoveredPage, setHoveredPage] = useState("");
   const [refreshToken, setRefreshToken] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("Local data ready");
@@ -172,6 +232,8 @@ function App() {
   }, []);
 
   const triggerRefresh = () => setRefreshToken((value) => value + 1);
+  const sidebarPreviewPage = hoveredPage || activePage;
+  const sidebarPreviewStyle = { "--sidebar-preview-art": makeSidebarArtDataUri(sidebarPreviewPage) };
 
   async function runSync() {
     if (!db || syncing) return;
@@ -199,12 +261,11 @@ function App() {
   return (
     <div className="app-frame">
       <div className="app-shell">
-        <aside className="sidebar">
+        <aside className="sidebar" style={sidebarPreviewStyle}>
+          <div className="sidebar-media" aria-hidden="true" />
           <div className="sidebar-header">
             <div className="brand">
-              <div className="brand-kicker">cassette futurist</div>
               <h1>Star Citizen Companion</h1>
-              <p>Local flight deck for crafting, trade routes, loadouts and rare-resource tracking.</p>
             </div>
             <div className="sidebar-ledger">
               <span className="ledger-pill is-live">LIVE</span>
@@ -235,11 +296,18 @@ function App() {
               ["loadouts", "Loadouts"],
               ["wikelo", "Wikelo"]
             ].map(([key, label], index) => (
-              <button key={key} className={`nav-button ${activePage === key ? "is-active" : ""}`} onClick={() => setActivePage(key)}>
+              <button
+                key={key}
+                className={`nav-button ${activePage === key ? "is-active" : ""}`}
+                onClick={() => setActivePage(key)}
+                onMouseEnter={() => setHoveredPage(key)}
+                onMouseLeave={() => setHoveredPage("")}
+                onFocus={() => setHoveredPage(key)}
+                onBlur={() => setHoveredPage("")}
+              >
                 <span className="nav-button-index">{String(index + 1).padStart(2, "0")}</span>
                 <span className="nav-button-copy">
                   <strong>{label}</strong>
-                  <small>{visuals[key].kicker}</small>
                 </span>
               </button>
             ))}
@@ -519,39 +587,43 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                 </div>
               ) : null}
 
-              <SectionCard title="Craft setup">
-                <div className="scmdb-setup-grid">
-                  <div className="scmdb-setup-main">
-                    <div className="scmdb-action-row">
-                      <button className="primary-button small">Craft</button>
-                      <button className="secondary-button small" onClick={() => toggleOwnedById(detail.id, detail.owned)}>
-                        {detail.owned ? "Unmark owned" : "Mark owned"}
-                      </button>
-                      <div className="quality-pill">{globalQuality} / 1000</div>
-                    </div>
-                    <div className="toolbar-grid compact compact-crafting-toolbar">
-                      <label className="field-stack">
-                        <span>Craft quantity</span>
-                        <input className="app-input" type="number" min="1" value={multiplier} onChange={(event) => setMultiplier(Math.max(1, toNumber(event.target.value, 1)))} />
-                      </label>
-                      <label className="field-stack">
-                        <span>All materials</span>
-                        <div className="brutalist-stepper">
-                          <button className="stepper-button" onClick={() => shiftGlobalQuality(-50)}>
-                            -
-                          </button>
-                          <input className="stepper-input" value={globalQuality} onChange={(event) => applyGlobalQuality(event.target.value)} />
-                          <button className="stepper-button" onClick={() => shiftGlobalQuality(50)}>
-                            +
-                          </button>
+              <SectionCard title="Craft setup" className="craft-setup-card">
+                <div className="craft-setup-shell">
+                  <div className="scmdb-action-row craft-action-row">
+                    <button className="primary-button small">Craft</button>
+                    <div className="quality-pill">{globalQuality} / 1000</div>
+                    <div className="craft-setup-meta">{detailSlots.length} segments</div>
+                  </div>
+
+                  <div className="craft-setup-grid">
+                    <label className="field-stack craft-quantity-field">
+                      <span>Craft quantity</span>
+                      <input className="app-input" type="number" min="1" value={multiplier} onChange={(event) => setMultiplier(Math.max(1, toNumber(event.target.value, 1)))} />
+                    </label>
+
+                    <div className="craft-global-panel">
+                      <span className="craft-global-label">All materials</span>
+                      <div className="craft-slider-shell">
+                        <div className="craft-slider-row">
+                          <input
+                            className="craft-range"
+                            type="range"
+                            min="0"
+                            max="1000"
+                            step="10"
+                            value={globalQuality}
+                            onChange={(event) => applyGlobalQuality(event.target.value)}
+                          />
+                          <input
+                            className="app-input craft-range-input"
+                            type="number"
+                            min="0"
+                            max="1000"
+                            step="10"
+                            value={globalQuality}
+                            onChange={(event) => applyGlobalQuality(event.target.value)}
+                          />
                         </div>
-                      </label>
-                      <div className="scmdb-preset-row">
-                        {QUALITY_PRESETS.map((preset) => (
-                          <button key={preset} className={`preset-chip ${globalQuality === preset ? "is-active" : ""}`} onClick={() => applyGlobalQuality(preset)}>
-                            {preset === 0 ? "Min" : preset === 250 ? "Base" : preset === 500 ? "50%" : preset === 750 ? "High" : "Max"}
-                          </button>
-                        ))}
                       </div>
                     </div>
                   </div>
@@ -560,7 +632,7 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
 
               <div className="segment-card-list">
                 {detailSlots.map((slot) => (
-                  <SectionCard key={slot.key} title={slot.slot}>
+                  <SectionCard key={slot.key} title={slot.slot} className="segment-card">
                     <div className="segment-header">
                       <div className="segment-material">
                         <strong>{slot.material}</strong>
@@ -568,30 +640,32 @@ function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
                           {slot.required.toFixed(3)} SCU (min {slot.minQuality})
                         </span>
                       </div>
-                      <div className="segment-state is-info">
-                        {slot.slot}
-                      </div>
                     </div>
-                    <div className="quality-slider-row">
+                    <div className="quality-slider-row compact-quality-row">
                       <div className="quality-slider-copy">
                         <strong>Quality</strong>
-                        <span>{slot.material}</span>
                       </div>
-                      <div className="brutalist-stepper wide">
-                        <button className="stepper-button" onClick={() => shiftSlotQuality(slot.key, -50)}>
-                          -
-                        </button>
-                        <input className="stepper-input" value={slot.value} onChange={(event) => updateSlotQuality(slot.key, event.target.value)} />
-                        <button className="stepper-button" onClick={() => shiftSlotQuality(slot.key, 50)}>
-                          +
-                        </button>
-                      </div>
-                      <div className="mini-preset-row">
-                        {[0, 500, 1000].map((preset) => (
-                          <button key={preset} className={`mini-preset ${slot.value === preset ? "is-active" : ""}`} onClick={() => updateSlotQuality(slot.key, preset)}>
-                            {preset === 0 ? "Min" : preset === 500 ? "50" : "Max"}
-                          </button>
-                        ))}
+                      <div className="segment-slider-shell">
+                        <div className="segment-slider-row">
+                          <input
+                            className="craft-range"
+                            type="range"
+                            min="0"
+                            max="1000"
+                            step="10"
+                            value={slot.value}
+                            onChange={(event) => updateSlotQuality(slot.key, event.target.value)}
+                          />
+                          <input
+                            className="app-input segment-quality-input"
+                            type="number"
+                            min="0"
+                            max="1000"
+                            step="10"
+                            value={slot.value}
+                            onChange={(event) => updateSlotQuality(slot.key, event.target.value)}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="segment-effects">
@@ -1281,12 +1355,12 @@ function TradeRoutesPage({ visual }) {
               <p className="summary-copy compact">
                 Overlay {overlayState.visible ? "visible" : "hidden"}{overlayState.route ? ` · step ${overlayState.progressIndex + 1}` : ""}
               </p>
-              <div className="route-step">
-                <strong>Estimated fill</strong>
-                <span>{visibleSelectedRoute.quantity} SCU</span>
-                <span>
+              <div className="trade-estimate-card">
+                <div className="trade-estimate-title">Estimated fill</div>
+                <div className="trade-estimate-value">{visibleSelectedRoute.quantity} SCU</div>
+                <div className="trade-estimate-meta">
                   Buy stock {fmtNumber(visibleSelectedRoute.availabilityScu)} / destination demand {fmtNumber(visibleSelectedRoute.destinationDemandScu)}
-                </span>
+                </div>
               </div>
             </div>
           ) : (
