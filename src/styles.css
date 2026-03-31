@@ -1477,11 +1477,232 @@ textarea {
   line-height: 1.35;
 }
 
+.trade-map-card {
+  display: grid;
+  gap: 8px;
+}
+
+.trade-map-card.is-expanded {
+  gap: 12px;
+  height: 100%;
+}
+
+.trade-map-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trade-map-head strong {
+  font-size: 0.86rem;
+}
+
+.trade-map-head span {
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .route-map {
+  position: relative;
   width: 100%;
+  min-height: 230px;
+  overflow: hidden;
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(10, 22, 31, 0.95), rgba(7, 14, 21, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.route-map.is-expanded {
+  min-height: calc(100vh - 210px);
+  overflow: auto;
+}
+
+.route-map-svg {
+  display: block;
+  width: 100%;
+  min-height: 230px;
+  height: auto;
+}
+
+.route-map-svg.is-expanded {
+  min-height: calc(100vh - 210px);
+}
+
+.route-map-grid line {
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 1;
+}
+
+.route-system-panel rect {
+  fill: rgba(255, 255, 255, 0.025);
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.route-system-label {
+  fill: #d7e1eb;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.route-map-link {
+  stroke: url(#routeLineGradient);
+  stroke-width: 3;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.route-map-jump {
+  stroke: url(#jumpLineGradient);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 8 7;
+  fill: none;
+}
+
+.route-map-pulse {
+  fill: rgba(19, 212, 255, 0.12);
+  stroke: rgba(19, 212, 255, 0.55);
+  stroke-width: 1.5;
+}
+
+.route-map-node circle {
+  fill: rgba(243, 243, 243, 0.22);
+  stroke: rgba(243, 243, 243, 0.42);
+  stroke-width: 1.5;
+}
+
+.route-map-node text {
+  fill: #d7e1eb;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 11px;
+  text-anchor: middle;
+  letter-spacing: 0.06em;
+}
+
+.route-map-node.type-star circle {
+  fill: rgba(255, 176, 0, 0.22);
+  stroke: rgba(255, 176, 0, 0.8);
+}
+
+.route-map-node.type-planet circle {
+  fill: rgba(255, 255, 255, 0.16);
+}
+
+.route-map-node.type-moon circle {
+  fill: rgba(243, 243, 243, 0.08);
+  stroke: rgba(243, 243, 243, 0.25);
+}
+
+.route-map-node.type-station circle,
+.route-map-node.type-landing circle,
+.route-map-node.type-gateway circle {
+  fill: rgba(19, 212, 255, 0.12);
+  stroke: rgba(19, 212, 255, 0.58);
+}
+
+.route-map-node.type-asteroid circle,
+.route-map-node.type-belt circle {
+  fill: rgba(89, 245, 138, 0.08);
+  stroke: rgba(89, 245, 138, 0.4);
+}
+
+.route-map-node.is-active circle {
+  fill: rgba(19, 212, 255, 0.18);
+  stroke: rgba(19, 212, 255, 0.9);
+}
+
+.route-map-node.is-destination circle {
+  fill: rgba(110, 255, 161, 0.14);
+  stroke: rgba(110, 255, 161, 0.9);
+}
+
+.route-map-node.is-origin text,
+.route-map-node.is-destination text {
+  fill: #f8fbff;
+}
+
+.route-map-jump-label {
+  fill: rgba(110, 255, 161, 0.82);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+}
+
+.route-map-label {
+  position: absolute;
+  display: grid;
+  gap: 2px;
+  max-width: 220px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 8, 8, 0.68);
+  backdrop-filter: blur(3px);
+}
+
+.route-map-label strong {
+  color: var(--accent);
+  font-size: 0.78rem;
+}
+
+.route-map-label span {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.route-map-label small {
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.route-map-label-origin {
+  left: 14px;
+  bottom: 14px;
+}
+
+.route-map-label-destination {
+  right: 14px;
+  top: 14px;
+}
+
+.trade-map-screen {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  height: 100%;
+}
+
+.trade-map-screen-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0 0;
+}
+
+.trade-map-screen-copy {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+}
+
+.trade-map-screen-copy strong {
+  font-size: 1rem;
+}
+
+.trade-map-screen-copy span {
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
 }
 
 .inventory-form,

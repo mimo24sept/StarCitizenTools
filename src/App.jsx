@@ -35,6 +35,116 @@ const TRADE_NODES = {
   "Orbituary": [890, 256]
 };
 
+const TRADE_SYSTEM_NODES = {
+  Stanton: [120, 190],
+  Pyro: [350, 108],
+  Nyx: [590, 196],
+  Terra: [690, 86]
+};
+
+const TRADE_MAP_SYSTEMS = {
+  Stanton: {
+    label: "Stanton",
+    nodes: {
+      "Stanton Star": { x: 156, y: 176, type: "star", label: "Stanton" },
+      Crusader: { x: 78, y: 112, type: "planet", label: "Crusader", major: true },
+      Cellin: { x: 38, y: 102, type: "moon", label: "Cellin" },
+      Daymar: { x: 54, y: 144, type: "moon", label: "Daymar" },
+      Yela: { x: 102, y: 148, type: "moon", label: "Yela" },
+      Orison: { x: 84, y: 78, type: "station", label: "Orison", major: true },
+      "Seraphim Station": { x: 120, y: 96, type: "station", label: "Seraphim", major: true },
+      "Grim HEX": { x: 124, y: 128, type: "station", label: "Grim HEX" },
+      Hurston: { x: 126, y: 262, type: "planet", label: "Hurston", major: true },
+      Aberdeen: { x: 76, y: 246, type: "moon", label: "Aberdeen" },
+      Arial: { x: 86, y: 292, type: "moon", label: "Arial" },
+      Magda: { x: 144, y: 304, type: "moon", label: "Magda" },
+      Ita: { x: 180, y: 262, type: "moon", label: "Ita" },
+      Lorville: { x: 126, y: 228, type: "landing", label: "Lorville", major: true },
+      "Everus Harbor": { x: 166, y: 224, type: "station", label: "Everus", major: true },
+      ArcCorp: { x: 234, y: 142, type: "planet", label: "ArcCorp", major: true },
+      Wala: { x: 264, y: 108, type: "moon", label: "Wala" },
+      Lyria: { x: 286, y: 154, type: "moon", label: "Lyria" },
+      Area18: { x: 234, y: 108, type: "landing", label: "Area18", major: true },
+      "Baijini Point": { x: 270, y: 182, type: "station", label: "Baijini", major: true },
+      microTech: { x: 240, y: 290, type: "planet", label: "microTech", major: true },
+      Calliope: { x: 194, y: 320, type: "moon", label: "Calliope" },
+      Clio: { x: 238, y: 338, type: "moon", label: "Clio" },
+      Euterpe: { x: 286, y: 322, type: "moon", label: "Euterpe" },
+      "New Babbage": { x: 238, y: 254, type: "landing", label: "New Babbage", major: true },
+      "Port Tressler": { x: 276, y: 258, type: "station", label: "Tressler", major: true },
+      "Pyro Gateway (Stanton)": { x: 304, y: 188, type: "gateway", label: "Pyro Gateway", major: true }
+    }
+  },
+  Pyro: {
+    label: "Pyro",
+    nodes: {
+      "Pyro Star": { x: 156, y: 176, type: "star", label: "Pyro" },
+      "Pyro I": { x: 76, y: 112, type: "planet", label: "Pyro I", major: true },
+      Monox: { x: 118, y: 274, type: "planet", label: "Monox", major: true },
+      Checkmate: { x: 88, y: 314, type: "station", label: "Checkmate", major: true },
+      Bloom: { x: 202, y: 102, type: "planet", label: "Bloom", major: true },
+      Orbituary: { x: 230, y: 72, type: "station", label: "Orbituary", major: true },
+      "Patch City": { x: 236, y: 126, type: "station", label: "Patch City", major: true },
+      Terminus: { x: 252, y: 182, type: "planet", label: "Terminus", major: true },
+      "Ruin Station": { x: 286, y: 154, type: "station", label: "Ruin", major: true },
+      Endgame: { x: 280, y: 200, type: "station", label: "Endgame" },
+      "Dudley & Daughters": { x: 250, y: 216, type: "station", label: "Dudley" },
+      "Pyro V": { x: 224, y: 296, type: "planet", label: "Pyro V", major: true },
+      Ignis: { x: 194, y: 340, type: "moon", label: "Ignis" },
+      Vatra: { x: 216, y: 350, type: "moon", label: "Vatra" },
+      Adir: { x: 240, y: 348, type: "moon", label: "Adir" },
+      Fairo: { x: 264, y: 340, type: "moon", label: "Fairo" },
+      Fuego: { x: 282, y: 320, type: "moon", label: "Fuego" },
+      Vuur: { x: 274, y: 294, type: "moon", label: "Vuur" },
+      Gaslight: { x: 202, y: 266, type: "station", label: "Gaslight" },
+      "Rat's Nest": { x: 246, y: 266, type: "station", label: "Rat's Nest" },
+      "Rod's Fuel": { x: 254, y: 322, type: "station", label: "Rod's Fuel" },
+      "Starlight Service": { x: 182, y: 130, type: "station", label: "Starlight" },
+      "Stanton Gateway (Pyro)": { x: 24, y: 188, type: "gateway", label: "Stanton Gateway", major: true },
+      "Nyx Gateway (Pyro)": { x: 304, y: 188, type: "gateway", label: "Nyx Gateway", major: true }
+    }
+  },
+  Nyx: {
+    label: "Nyx",
+    nodes: {
+      "Nyx Star": { x: 156, y: 176, type: "star", label: "Nyx" },
+      Delamar: { x: 118, y: 212, type: "asteroid", label: "Delamar", major: true },
+      Levski: { x: 118, y: 176, type: "landing", label: "Levski", major: true },
+      "Glaciem Ring": { x: 202, y: 112, type: "belt", label: "Glaciem Ring" },
+      "Pyro Gateway (Nyx)": { x: 284, y: 188, type: "gateway", label: "Pyro Gateway", major: true }
+    }
+  }
+};
+
+const TRADE_MAP_CONNECTIONS = {
+  Stanton: {
+    Pyro: {
+      exitNode: "Pyro Gateway (Stanton)",
+      entryNode: "Stanton Gateway (Pyro)",
+      jumpLabel: "Stanton - Pyro Jump Point"
+    }
+  },
+  Pyro: {
+    Stanton: {
+      exitNode: "Stanton Gateway (Pyro)",
+      entryNode: "Pyro Gateway (Stanton)",
+      jumpLabel: "Stanton - Pyro Jump Point"
+    },
+    Nyx: {
+      exitNode: "Nyx Gateway (Pyro)",
+      entryNode: "Pyro Gateway (Nyx)",
+      jumpLabel: "Pyro - Nyx Jump Point"
+    }
+  },
+  Nyx: {
+    Pyro: {
+      exitNode: "Pyro Gateway (Nyx)",
+      entryNode: "Nyx Gateway (Pyro)",
+      jumpLabel: "Pyro - Nyx Jump Point"
+    }
+  }
+};
+
 const CARGO_SHIPS = ["C2 Hercules", "M2 Hercules", "Caterpillar", "Mercury Star Runner", "Freelancer MAX", "Hull A"];
 const COMBAT_SHIPS = ["Arrow", "Gladius", "Hawk", "Talon", "Hornet Mk II", "Sabre", "Scorpius"];
 const LOADOUT_SLOTS = ["Power", "Cooler", "Shield", "Quantum", "Weapons", "Missiles", "Utility"];
@@ -128,6 +238,327 @@ function SectionCard({ title, children, className = "" }) {
       </header>
       {children}
     </section>
+  );
+}
+
+function normalizeLabel(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function includesAny(haystack, values) {
+  return values.some((value) => haystack.includes(value));
+}
+
+function resolveTradeBodyNode(systemName, terminalName, regionText) {
+  const system = TRADE_MAP_SYSTEMS[systemName];
+  if (!system) return null;
+
+  const haystack = normalizeLabel(`${terminalName} ${regionText}`);
+
+  const matchers = {
+    Stanton: [
+      [["new babbage"], "New Babbage"],
+      [["port tressler", "tressler"], "Port Tressler"],
+      [["area18", "area 18"], "Area18"],
+      [["baijini"], "Baijini Point"],
+      [["lorville"], "Lorville"],
+      [["everus"], "Everus Harbor"],
+      [["orison"], "Orison"],
+      [["seraphim"], "Seraphim Station"],
+      [["grim hex", "grimhex"], "Grim HEX"],
+      [["pyro gateway"], "Pyro Gateway (Stanton)"],
+      [["clio"], "Clio"],
+      [["calliope"], "Calliope"],
+      [["euterpe"], "Euterpe"],
+      [["microtech", "micro tech", "mic ", "mic-"], "microTech"],
+      [["lyria"], "Lyria"],
+      [["wala"], "Wala"],
+      [["arccorp", "arc corp", "arc ", "arc-"], "ArcCorp"],
+      [["aberdeen"], "Aberdeen"],
+      [["arial"], "Arial"],
+      [["magda"], "Magda"],
+      [["ita"], "Ita"],
+      [["hurston", "hur ", "hur-"], "Hurston"],
+      [["cellin"], "Cellin"],
+      [["daymar"], "Daymar"],
+      [["yela"], "Yela"],
+      [["crusader", "cru ", "cru-"], "Crusader"]
+    ],
+    Pyro: [
+      [["checkmate"], "Checkmate"],
+      [["orbituary"], "Orbituary"],
+      [["patch city"], "Patch City"],
+      [["ruin station"], "Ruin Station"],
+      [["endgame"], "Endgame"],
+      [["dudley"], "Dudley & Daughters"],
+      [["gaslight"], "Gaslight"],
+      [["rat s nest", "rats nest"], "Rat's Nest"],
+      [["rod s fuel", "rods fuel"], "Rod's Fuel"],
+      [["starlight"], "Starlight Service"],
+      [["stanton gateway"], "Stanton Gateway (Pyro)"],
+      [["nyx gateway"], "Nyx Gateway (Pyro)"],
+      [["monox"], "Monox"],
+      [["bloom"], "Bloom"],
+      [["terminus"], "Terminus"],
+      [["fairo"], "Fairo"],
+      [["fuego"], "Fuego"],
+      [["vuur"], "Vuur"],
+      [["adir"], "Adir"],
+      [["vatra"], "Vatra"],
+      [["ignis"], "Ignis"],
+      [["pyro v", "pyro 5"], "Pyro V"],
+      [["pyro i", "pyro 1"], "Pyro I"]
+    ],
+    Nyx: [
+      [["levski"], "Levski"],
+      [["delamar"], "Delamar"],
+      [["pyro gateway"], "Pyro Gateway (Nyx)"],
+      [["glaciem"], "Glaciem Ring"]
+    ]
+  };
+
+  for (const [needles, nodeKey] of matchers[systemName] || []) {
+    if (includesAny(haystack, needles)) return nodeKey;
+  }
+
+  const fallback = {
+    Stanton: "Stanton Star",
+    Pyro: "Pyro Star",
+    Nyx: "Nyx Star"
+  };
+
+  return fallback[systemName] || Object.keys(system.nodes)[0];
+}
+
+function findSystemPath(start, goal) {
+  if (!start || !goal) return [start || goal].filter(Boolean);
+  if (start === goal) return [start];
+
+  const queue = [[start]];
+  const seen = new Set([start]);
+
+  while (queue.length) {
+    const path = queue.shift();
+    const current = path[path.length - 1];
+    const neighbors = Object.keys(TRADE_MAP_CONNECTIONS[current] || {});
+
+    for (const neighbor of neighbors) {
+      if (seen.has(neighbor)) continue;
+      const nextPath = [...path, neighbor];
+      if (neighbor === goal) return nextPath;
+      seen.add(neighbor);
+      queue.push(nextPath);
+    }
+  }
+
+  return [start, goal];
+}
+
+function buildTradeRouteGraph(route) {
+  if (!route) return null;
+
+  const originSystem = route.originSystem || "Stanton";
+  const destinationSystem = route.destinationSystem || originSystem;
+  const systemPath = findSystemPath(originSystem, destinationSystem);
+  const systems = systemPath.filter((name, index) => systemPath.indexOf(name) === index && TRADE_MAP_SYSTEMS[name]);
+
+  const panelWidth = 328;
+  const panelGap = 86;
+  const topOffset = 82;
+  const sidePadding = 56;
+  const panelHeight = 392;
+
+  const panels = systems.map((systemName, index) => ({
+    systemName,
+    layout: TRADE_MAP_SYSTEMS[systemName],
+    x: sidePadding + index * (panelWidth + panelGap),
+    y: topOffset,
+    width: panelWidth,
+    height: panelHeight
+  }));
+
+  const panelBySystem = new Map(panels.map((panel) => [panel.systemName, panel]));
+  const globalNodes = new Map();
+
+  for (const panel of panels) {
+    for (const [nodeKey, node] of Object.entries(panel.layout.nodes)) {
+      globalNodes.set(`${panel.systemName}:${nodeKey}`, {
+        key: `${panel.systemName}:${nodeKey}`,
+        systemName: panel.systemName,
+        nodeKey,
+        ...node,
+        gx: panel.x + node.x,
+        gy: panel.y + node.y
+      });
+    }
+  }
+
+  const originNodeKey = resolveTradeBodyNode(originSystem, route.originName, route.originRegion);
+  const destinationNodeKey = resolveTradeBodyNode(destinationSystem, route.destinationName, route.destinationRegion);
+  const routeNodeIds = new Set([`${originSystem}:${originNodeKey}`, `${destinationSystem}:${destinationNodeKey}`]);
+  const segments = [];
+
+  let currentNodeId = `${originSystem}:${originNodeKey}`;
+
+  if (systems.length === 1) {
+    const destinationNodeId = `${destinationSystem}:${destinationNodeKey}`;
+    if (globalNodes.has(currentNodeId) && globalNodes.has(destinationNodeId)) {
+      segments.push({ from: currentNodeId, to: destinationNodeId, kind: "local" });
+    }
+  } else {
+    for (let index = 0; index < systems.length - 1; index += 1) {
+      const currentSystem = systems[index];
+      const nextSystem = systems[index + 1];
+      const connection = TRADE_MAP_CONNECTIONS[currentSystem]?.[nextSystem];
+      if (!connection) continue;
+
+      const exitNodeId = `${currentSystem}:${connection.exitNode}`;
+      const entryNodeId = `${nextSystem}:${connection.entryNode}`;
+
+      routeNodeIds.add(exitNodeId);
+      routeNodeIds.add(entryNodeId);
+
+      if (globalNodes.has(currentNodeId) && globalNodes.has(exitNodeId) && currentNodeId !== exitNodeId) {
+        segments.push({ from: currentNodeId, to: exitNodeId, kind: "local" });
+      }
+
+      if (globalNodes.has(exitNodeId) && globalNodes.has(entryNodeId)) {
+        segments.push({ from: exitNodeId, to: entryNodeId, kind: "jump", label: connection.jumpLabel });
+      }
+
+      currentNodeId = entryNodeId;
+    }
+
+    const finalNodeId = `${destinationSystem}:${destinationNodeKey}`;
+    if (globalNodes.has(currentNodeId) && globalNodes.has(finalNodeId) && currentNodeId !== finalNodeId) {
+      segments.push({ from: currentNodeId, to: finalNodeId, kind: "local" });
+    }
+  }
+
+  const visibleNodeIds = new Set();
+  for (const [nodeId, node] of globalNodes.entries()) {
+    const alwaysVisible = node.type === "planet" || node.major === true;
+    if (alwaysVisible || routeNodeIds.has(nodeId)) {
+      visibleNodeIds.add(nodeId);
+    }
+  }
+
+  return {
+    width: sidePadding * 2 + panels.length * panelWidth + Math.max(0, panels.length - 1) * panelGap,
+    height: 560,
+    panels,
+    globalNodes,
+    systems,
+    routeNodeIds,
+    visibleNodeIds,
+    segments,
+    originSystem,
+    destinationSystem,
+    originNodeId: `${originSystem}:${originNodeKey}`,
+    destinationNodeId: `${destinationSystem}:${destinationNodeKey}`
+  };
+}
+
+function TradeRouteMap({ route, expanded = false }) {
+  const graph = buildTradeRouteGraph(route);
+  if (!route || !graph) return null;
+  const sameSystem = graph.originSystem === graph.destinationSystem;
+
+  return (
+    <div className={`trade-map-card ${expanded ? "is-expanded" : ""}`}>
+      <div className="trade-map-head">
+        <strong>Route map</strong>
+        <span>{sameSystem ? graph.originSystem : `${graph.originSystem} -> ${graph.destinationSystem}`}</span>
+      </div>
+      <div className={`route-map ${expanded ? "is-expanded" : ""}`}>
+        <svg viewBox={`0 0 ${graph.width} ${graph.height}`} className={`route-map-svg ${expanded ? "is-expanded" : ""}`} aria-hidden="true">
+          <defs>
+            <linearGradient id="routeLineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#13d4ff" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#f3f3f3" stopOpacity="0.65" />
+            </linearGradient>
+            <linearGradient id="jumpLineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#13d4ff" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="#59f58a" stopOpacity="0.75" />
+            </linearGradient>
+          </defs>
+
+          <rect x="0" y="0" width={graph.width} height={graph.height} fill="transparent" />
+
+          {graph.panels.map((panel) => (
+            <g key={panel.systemName} className="route-system-panel">
+              <rect x={panel.x} y={panel.y} width={panel.width} height={panel.height} rx="22" />
+              <text x={panel.x + 20} y={panel.y + 30} className="route-system-label">{panel.layout.label}</text>
+            </g>
+          ))}
+
+          {graph.panels.map((panel) => (
+            <g key={`${panel.systemName}-grid`} className="route-map-grid">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <line key={`v-${panel.systemName}-${index}`} x1={panel.x + 44 + index * 52} y1={panel.y + 44} x2={panel.x + 44 + index * 52} y2={panel.y + panel.height - 26} />
+              ))}
+              {Array.from({ length: 5 }).map((_, index) => (
+                <line key={`h-${panel.systemName}-${index}`} x1={panel.x + 26} y1={panel.y + 62 + index * 60} x2={panel.x + panel.width - 26} y2={panel.y + 62 + index * 60} />
+              ))}
+            </g>
+          ))}
+
+          {graph.segments.map((segment, index) => {
+            const from = graph.globalNodes.get(segment.from);
+            const to = graph.globalNodes.get(segment.to);
+            if (!from || !to) return null;
+
+            const mx = (from.gx + to.gx) / 2;
+            const my = (from.gy + to.gy) / 2;
+
+            return (
+              <g key={`segment-${index}`} className={`route-map-segment ${segment.kind}`}>
+                <path
+                  d={`M ${from.gx} ${from.gy} Q ${mx} ${Math.min(from.gy, to.gy) - 24} ${to.gx} ${to.gy}`}
+                  className={segment.kind === "jump" ? "route-map-jump" : "route-map-link"}
+                />
+                {segment.kind === "jump" && segment.label ? (
+                  <text x={mx} y={my - 26} className="route-map-jump-label">{segment.label}</text>
+                ) : null}
+              </g>
+            );
+          })}
+
+          {Array.from(graph.globalNodes.values())
+            .filter((node) => graph.visibleNodeIds.has(node.key))
+            .map((node) => {
+            const isRouteNode = graph.routeNodeIds.has(node.key);
+            const isOrigin = node.key === graph.originNodeId;
+            const isDestination = node.key === graph.destinationNodeId;
+
+            return (
+              <g
+                key={node.key}
+                className={`route-map-node type-${node.type} ${isRouteNode ? "is-active" : ""} ${isOrigin ? "is-origin" : ""} ${isDestination ? "is-destination" : ""}`}
+              >
+                <circle cx={node.gx} cy={node.gy} r={node.type === "star" ? 9 : node.type === "planet" ? 7 : node.type === "moon" ? 4 : 5} />
+                <text x={node.gx} y={node.gy + (node.type === "moon" ? 16 : 20)}>{node.label}</text>
+              </g>
+            );
+          })}
+        </svg>
+
+        <div className="route-map-label route-map-label-origin">
+          <strong>Buy</strong>
+          <span>{route.originName}</span>
+          <small>{route.originRegion}</small>
+        </div>
+
+        <div className="route-map-label route-map-label-destination">
+          <strong>Sell</strong>
+          <span>{route.destinationName}</span>
+          <small>{route.destinationRegion}</small>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -849,6 +1280,7 @@ function TradeRoutesPage({ visual }) {
   const [commodities, setCommodities] = useState([]);
   const [results, setResults] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [mapExpanded, setMapExpanded] = useState(false);
   const [preferredDraft, setPreferredDraft] = useState("");
   const [avoidDraft, setAvoidDraft] = useState("");
   const [overlayState, setOverlayState] = useState({ visible: false, progressIndex: 0, route: null });
@@ -1042,6 +1474,28 @@ function TradeRoutesPage({ visual }) {
     if (selectedIndex < visibleResults.length) return;
     setSelectedIndex(0);
   }, [selectedIndex, visibleResults.length]);
+
+  useEffect(() => {
+    if (visibleSelectedRoute) return;
+    setMapExpanded(false);
+  }, [visibleSelectedRoute]);
+
+  if (mapExpanded && visibleSelectedRoute) {
+    return (
+      <div className="page-shell trade-page">
+        <section className="trade-map-screen">
+          <div className="trade-map-screen-head">
+            <button className="ghost-button" onClick={() => setMapExpanded(false)}>Back to trade routes</button>
+            <div className="trade-map-screen-copy">
+              <strong>{visibleSelectedRoute.commodityName}</strong>
+              <span>{visibleSelectedRoute.originName} {"->"} {visibleSelectedRoute.destinationName}</span>
+            </div>
+          </div>
+          <TradeRouteMap route={visibleSelectedRoute} expanded />
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="page-shell trade-page">
@@ -1274,6 +1728,9 @@ function TradeRoutesPage({ visual }) {
                 </div>
               </div>
               <div className="button-row trade-overlay-actions">
+                <button className="secondary-button" onClick={() => setMapExpanded(true)}>
+                  Open map
+                </button>
                 <button className="primary-button" onClick={showSelectedRouteInOverlay}>
                   {overlayState.visible ? "Update overlay" : "Show overlay"}
                 </button>
