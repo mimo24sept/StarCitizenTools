@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
+const { runSync } = require("./sync.cjs");
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL;
 const isDev = Boolean(devServerUrl);
@@ -234,36 +235,22 @@ ipcMain.handle("fs:write-bytes", async (_event, relativePath, arrayBuffer) => {
 });
 
 ipcMain.handle("sync:run", async () => {
-  return await new Promise((resolve) => {
-    const child = spawn("py", ["sync_all.py"], {
-      cwd: ROOT_DIR,
-      windowsHide: true
+  try {
+    const result = await runSync(DATA_DIR, (msg) => {
+      console.log("[Sync]", msg);
     });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.on("close", (code) => {
-      resolve({
-        ok: code === 0,
-        code,
-        stdout,
-        stderr
-      });
-    });
-    child.on("error", (error) => {
-      resolve({
-        ok: false,
-        code: -1,
-        stdout,
-        stderr: `${stderr}\n${String(error)}`
-      });
-    });
-  });
+    if (result.ok) {
+      return { 
+        ok: true, 
+        code: 0, 
+        stdout: `Synchronisation terminee pour ${result.version}: ${result.imported} blueprints locaux, dernier ID scanne ${result.lastId}.`, 
+        stderr: "" 
+      };
+    }
+    return { ok: false, code: -1, stdout: "", stderr: result.error || "Unknown error" };
+  } catch (error) {
+    return { ok: false, code: -1, stdout: "", stderr: String(error) };
+  }
 });
 
 ipcMain.handle("trade:sync", async () => {
