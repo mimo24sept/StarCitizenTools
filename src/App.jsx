@@ -883,12 +883,12 @@ function TradeRoutesPage({ visual }) {
     setSystems(nextSystems);
     setForm((current) => {
       const selectedShip = nextShips.find((item) => (item.fullName || item.name) === current.shipId) ?? nextShips[0];
-      const selectedTerminal = nextTerminals.find((item) => String(item.id) === String(current.originTerminalId)) ?? nextTerminals[0];
+      const selectedTerminal = nextTerminals.find((item) => String(item.id) === String(current.originTerminalId));
       return {
         ...current,
         shipId: selectedShip ? selectedShip.fullName || selectedShip.name : "",
         cargoCapacity: current.cargoCapacity || selectedShip?.scu || 0,
-        originTerminalId: selectedTerminal ? String(selectedTerminal.id) : ""
+        originTerminalId: selectedTerminal ? String(selectedTerminal.id) : current.originTerminalId || ""
       };
     });
   }, [snapshot]);
@@ -978,6 +978,7 @@ function TradeRoutesPage({ visual }) {
             <label className="field-stack">
               <span>Origin terminal</span>
               <select className="app-select" value={form.originTerminalId} onChange={(event) => setForm((current) => ({ ...current, originTerminalId: event.target.value }))}>
+                <option value="">Any terminal</option>
                 {terminals.map((item) => (
                   <option key={item.id} value={item.id}>
                     {getTerminalLabel(item)}

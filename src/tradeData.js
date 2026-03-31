@@ -64,14 +64,15 @@ export function calculateBestRoutes(snapshot, options) {
   const legalityFilter = options.legalityFilter || "all";
   const sortBy = options.sortBy || "profit";
 
-  if (!budget || !cargoCapacity || !originTerminalId) return [];
+  if (!budget || !cargoCapacity) return [];
 
   const { terminalById, commodityById } = buildIndexes(snapshot);
-  const originTerminal = terminalById.get(originTerminalId);
-  if (!originTerminal) return [];
-
   const listings = snapshot.prices ?? [];
-  const buyListings = listings.filter((item) => item.terminalId === originTerminalId && item.priceBuy > 0 && item.statusBuy > 0);
+  const buyListings = listings.filter((item) => {
+    if (!(item.priceBuy > 0 && item.statusBuy > 0)) return false;
+    if (!originTerminalId) return terminalById.has(item.terminalId);
+    return item.terminalId === originTerminalId;
+  });
   const sellListingsByCommodity = new Map();
 
   for (const listing of listings) {
@@ -87,6 +88,8 @@ export function calculateBestRoutes(snapshot, options) {
 
   const routes = [];
   for (const buy of buyListings) {
+    const originTerminal = terminalById.get(buy.terminalId);
+    if (!originTerminal) continue;
     const commodity = commodityById.get(buy.commodityId);
     if (!commodity || !commodity.isVisible || !commodity.isAvailableLive) continue;
     if (legalityFilter === "legal" && commodity.isIllegal) continue;
