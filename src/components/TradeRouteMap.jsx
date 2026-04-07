@@ -22,6 +22,12 @@ export default function TradeRouteMap({ route, expanded = false }) {
               <stop offset="0%" stopColor="#13d4ff" stopOpacity="0.55" />
               <stop offset="100%" stopColor="#59f58a" stopOpacity="0.75" />
             </linearGradient>
+            <marker id="routeArrowHead" markerWidth="8" markerHeight="8" refX="6.2" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L8,4 L0,8 z" fill="#dff9ff" fillOpacity="0.9" />
+            </marker>
+            <marker id="jumpArrowHead" markerWidth="8" markerHeight="8" refX="6.2" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L8,4 L0,8 z" fill="#59f58a" fillOpacity="0.9" />
+            </marker>
           </defs>
 
           <rect x="0" y="0" width={graph.width} height={graph.height} fill="transparent" />
@@ -44,6 +50,19 @@ export default function TradeRouteMap({ route, expanded = false }) {
             </g>
           ))}
 
+          {graph.panels.map((panel) =>
+            (panel.layout.orbits ?? []).map((orbit, index) => (
+              <ellipse
+                key={`${panel.systemName}-orbit-${index}`}
+                className="route-map-orbit"
+                cx={panel.x + orbit.cx}
+                cy={panel.y + orbit.cy}
+                rx={orbit.rx}
+                ry={orbit.ry}
+              />
+            ))
+          )}
+
           {graph.segments.map((segment, index) => {
             const from = graph.globalNodes.get(segment.from);
             const to = graph.globalNodes.get(segment.to);
@@ -51,13 +70,20 @@ export default function TradeRouteMap({ route, expanded = false }) {
 
             const mx = (from.gx + to.gx) / 2;
             const my = (from.gy + to.gy) / 2;
+            const controlY = Math.min(from.gy, to.gy) - 24;
+            const markerId = segment.kind === "jump" ? "url(#jumpArrowHead)" : "url(#routeArrowHead)";
 
             return (
               <g key={`segment-${index}`} className={`route-map-segment ${segment.kind}`}>
                 <path
-                  d={`M ${from.gx} ${from.gy} Q ${mx} ${Math.min(from.gy, to.gy) - 24} ${to.gx} ${to.gy}`}
+                  d={`M ${from.gx} ${from.gy} Q ${mx} ${controlY} ${to.gx} ${to.gy}`}
                   className={segment.kind === "jump" ? "route-map-jump" : "route-map-link"}
+                  markerEnd={markerId}
                 />
+                <g className="route-segment-step">
+                  <circle cx={mx} cy={my - 2} r="11" />
+                  <text x={mx} y={my + 2}>{segment.sequence}</text>
+                </g>
                 {segment.kind === "jump" && segment.label ? (
                   <text x={mx} y={my - 26} className="route-map-jump-label">{segment.label}</text>
                 ) : null}
@@ -71,6 +97,10 @@ export default function TradeRouteMap({ route, expanded = false }) {
             const isRouteNode = graph.routeNodeIds.has(node.key);
             const isOrigin = node.key === graph.originNodeId;
             const isDestination = node.key === graph.destinationNodeId;
+            const defaultLabelDy = node.type === "star" ? -16 : node.type === "moon" ? 16 : 20;
+            const labelDx = node.labelDx ?? 0;
+            const labelDy = node.labelDy ?? defaultLabelDy;
+            const labelAnchor = node.labelAnchor ?? "middle";
 
             return (
               <g
@@ -78,11 +108,20 @@ export default function TradeRouteMap({ route, expanded = false }) {
                 className={`route-map-node type-${node.type} ${isRouteNode ? "is-active" : ""} ${isOrigin ? "is-origin" : ""} ${isDestination ? "is-destination" : ""}`}
               >
                 <circle cx={node.gx} cy={node.gy} r={node.type === "star" ? 9 : node.type === "planet" ? 7 : node.type === "moon" ? 4 : 5} />
-                <text x={node.gx} y={node.gy + (node.type === "moon" ? 16 : 20)}>{node.label}</text>
+                <text x={node.gx + labelDx} y={node.gy + labelDy} textAnchor={labelAnchor}>{node.label}</text>
               </g>
             );
           })}
         </svg>
+
+        <div className="trade-map-flow">
+          {graph.waypoints.map((point, index) => (
+            <div key={`${point.key}-${index}`} className={`trade-map-flow-item ${index === 0 ? "is-origin" : ""} ${index === graph.waypoints.length - 1 ? "is-destination" : ""}`}>
+              <span>{point.label}</span>
+              {index < graph.waypoints.length - 1 ? <i>{"->"}</i> : null}
+            </div>
+          ))}
+        </div>
 
         <div className="route-map-label route-map-label-origin">
           <strong>Buy</strong>
@@ -265,6 +304,7 @@ function buildTradeRouteGraph(route) {
   const destinationNodeKey = resolveTradeBodyNode(destinationSystem, routeLegs[routeLegs.length - 1].destinationName, routeLegs[routeLegs.length - 1].destinationRegion);
   const routeNodeIds = new Set([`${originSystem}:${originNodeKey}`, `${destinationSystem}:${destinationNodeKey}`]);
   const segments = [];
+  let sequence = 1;
 
   for (const leg of routeLegs) {
     const legOriginSystem = leg.originSystem || "Stanton";
@@ -280,7 +320,7 @@ function buildTradeRouteGraph(route) {
     if (legSystemPath.length === 1) {
       const destinationNodeId = `${legDestinationSystem}:${legDestinationNodeKey}`;
       if (globalNodes.has(currentNodeId) && globalNodes.has(destinationNodeId) && currentNodeId !== destinationNodeId) {
-        segments.push({ from: currentNodeId, to: destinationNodeId, kind: "local" });
+        segments.push({ from: currentNodeId, to: destinationNodeId, kind: "local", sequence: sequence++ });
       }
       continue;
     }
@@ -298,11 +338,11 @@ function buildTradeRouteGraph(route) {
       routeNodeIds.add(entryNodeId);
 
       if (globalNodes.has(currentNodeId) && globalNodes.has(exitNodeId) && currentNodeId !== exitNodeId) {
-        segments.push({ from: currentNodeId, to: exitNodeId, kind: "local" });
+        segments.push({ from: currentNodeId, to: exitNodeId, kind: "local", sequence: sequence++ });
       }
 
       if (globalNodes.has(exitNodeId) && globalNodes.has(entryNodeId)) {
-        segments.push({ from: exitNodeId, to: entryNodeId, kind: "jump", label: connection.jumpLabel });
+        segments.push({ from: exitNodeId, to: entryNodeId, kind: "jump", label: connection.jumpLabel, sequence: sequence++ });
       }
 
       currentNodeId = entryNodeId;
@@ -310,7 +350,7 @@ function buildTradeRouteGraph(route) {
 
     const finalNodeId = `${legDestinationSystem}:${legDestinationNodeKey}`;
     if (globalNodes.has(currentNodeId) && globalNodes.has(finalNodeId) && currentNodeId !== finalNodeId) {
-      segments.push({ from: currentNodeId, to: finalNodeId, kind: "local" });
+      segments.push({ from: currentNodeId, to: finalNodeId, kind: "local", sequence: sequence++ });
     }
   }
 
@@ -319,6 +359,18 @@ function buildTradeRouteGraph(route) {
     const alwaysVisible = node.type === "planet" || node.major === true;
     if (alwaysVisible || routeNodeIds.has(nodeId)) {
       visibleNodeIds.add(nodeId);
+    }
+  }
+
+  const waypoints = [];
+  const seenWaypoints = new Set();
+  for (const segment of segments) {
+    for (const nodeId of [segment.from, segment.to]) {
+      if (seenWaypoints.has(nodeId)) continue;
+      const node = globalNodes.get(nodeId);
+      if (!node) continue;
+      seenWaypoints.add(nodeId);
+      waypoints.push({ key: nodeId, label: node.label, type: node.type });
     }
   }
 
@@ -334,6 +386,7 @@ function buildTradeRouteGraph(route) {
     destinationNodeId: `${destinationSystem}:${destinationNodeKey}`,
     routeNodeIds,
     visibleNodeIds,
-    segments
+    segments,
+    waypoints
   };
 }
