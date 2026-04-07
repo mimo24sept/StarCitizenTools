@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toNumber, fmtMoney, fmtNumber } from '../utils/helpers';
 import { TRADE_NODES, CARGO_SHIPS, COMBAT_SHIPS, LOADOUT_SLOTS } from '../utils/constants';
 import SectionCard from '../components/SectionCard';
 import Hero from '../components/Hero';
 import TradeRouteMap from '../components/TradeRouteMap';
-import { calculateBestRoutes, calculateCircularRoutes, diversifyRoutes, getCargoShips, getSystems, getTerminalLabel, getTradeCommodities, getTradeTerminals, loadTradeSnapshot } from '../tradeData';
+import { calculateBestRoutes, calculateCircularRoutes, diversifyRoutes, enrichRoutesWithDistanceMap, getCargoShips, getDistancePairKey, getSystems, getTerminalLabel, getTradeCommodities, getTradeTerminals, loadTradeSnapshot, sortTradeRoutes } from '../tradeData';
 
 export default function TradeRoutesPage({ visual }) {
   const [snapshot, setSnapshot] = useState(null);
@@ -16,6 +16,7 @@ export default function TradeRoutesPage({ visual }) {
   const [systems, setSystems] = useState([]);
   const [commodities, setCommodities] = useState([]);
   const [results, setResults] = useState([]);
+  const [distanceMap, setDistanceMap] = useState({});
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [preferredDraft, setPreferredDraft] = useState("");
@@ -23,6 +24,7 @@ export default function TradeRoutesPage({ visual }) {
   const [overlayState, setOverlayState] = useState({ visible: false, progressIndex: 0, route: null });
   const [form, setForm] = useState({
     routeMode: "single",
+    loopLegCount: 3,
     shipId: "",
     cargoCapacity: 0,
     budget: 500000,
@@ -69,6 +71,7 @@ export default function TradeRoutesPage({ visual }) {
     const nextTerminals = getTradeTerminals(snapshot);
     const nextSystems = getSystems(snapshot);
     const nextCommodities = getTradeCommodities(snapshot);
+    setDistanceMap({});
     setShips(nextShips);
     setTerminals(nextTerminals);
     setSystems(nextSystems);
@@ -99,6 +102,7 @@ export default function TradeRoutesPage({ visual }) {
       destinationSystem: form.destinationSystem,
       legalityFilter: form.legalityFilter,
       sortBy: form.sortBy,
+      loopLegCount: form.loopLegCount,
       includeCommodityIds: form.includeCommodityIds,
       excludeCommodityIds: form.excludeCommodityIds
     };
@@ -108,6 +112,44 @@ export default function TradeRoutesPage({ visual }) {
     setResults(nextResults);
     setSelectedIndex(0);
   }, [snapshot, form]);
+
+  const enrichedResults = useMemo(
+    () => sortTradeRoutes(enrichRoutesWithDistanceMap(results, snapshot, distanceMap), form.sortBy),
+    [results, snapshot, distanceMap, form.sortBy]
+  );
+
+  useEffect(() => {
+    if (!snapshot || !results.length) return;
+
+    const candidateRoutes = (form.routeMode === "circular" ? results : diversifyRoutes(results, 2, 24)).slice(0, form.routeMode === "circular" ? 10 : 18);
+    const pairs = [];
+    const seen = new Set();
+
+    for (const route of candidateRoutes) {
+      const legs = route.mode === "circular" ? route.legs : [route];
+      for (const leg of legs) {
+        const key = getDistancePairKey(leg.originTerminalId, leg.destinationTerminalId);
+        if (!key || seen.has(key) || key in distanceMap) continue;
+        seen.add(key);
+        pairs.push({
+          originTerminalId: leg.originTerminalId,
+          destinationTerminalId: leg.destinationTerminalId
+        });
+      }
+    }
+
+    if (!pairs.length) return;
+
+    let cancelled = false;
+    window.desktopAPI.resolveTradeDistances(pairs).then((response) => {
+      if (cancelled || !response?.ok || !response.distances) return;
+      setDistanceMap((current) => ({ ...current, ...response.distances }));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [snapshot, results, form.routeMode, distanceMap]);
 
   useEffect(() => {
     const selectedShip = ships.find((item) => (item.fullName || item.name) === form.shipId);
@@ -230,7 +272,7 @@ export default function TradeRoutesPage({ visual }) {
     setOverlayState(state);
   }
 
-  const visibleResults = form.routeMode === "circular" ? results.slice(0, 24) : diversifyRoutes(results, 2, 24);
+  const visibleResults = form.routeMode === "circular" ? enrichedResults.slice(0, 24) : diversifyRoutes(enrichedResults, 2, 24);
   const visibleSelectedRoute = visibleResults[selectedIndex] ?? null;
 
   useEffect(() => {
@@ -265,8 +307,8 @@ export default function TradeRoutesPage({ visual }) {
       <div className="three-column-layout trade-layout">
         <SectionCard title="Trade calculator" className="narrow-card trade-control-card">
           <div className="trade-inline-stats">
-            <span>{results.length} routes</span>
-            <span>Best {fmtMoney(results[0]?.profit ?? 0)}</span>
+            <span>{enrichedResults.length} routes</span>
+            <span>Best {fmtMoney(enrichedResults[0]?.profit ?? 0)}</span>
             <span>{form.routeMode === "circular" ? `${visibleResults[0]?.legs?.length ?? 0} leg loop` : visibleResults[0]?.commodityName ?? "-"}</span>
           </div>
           <div className="trade-form-grid">
@@ -277,6 +319,17 @@ export default function TradeRoutesPage({ visual }) {
                 <option value="circular">Circular route</option>
               </select>
             </label>
+
+            {form.routeMode === "circular" ? (
+              <label className="field-stack">
+                <span>Loop legs</span>
+                <select className="app-select" value={form.loopLegCount} onChange={(event) => setForm((current) => ({ ...current, loopLegCount: toNumber(event.target.value, current.loopLegCount) }))}>
+                  <option value="3">3 legs</option>
+                  <option value="4">4 legs</option>
+                  <option value="5">5 legs</option>
+                </select>
+              </label>
+            ) : null}
 
             <label className="field-stack">
               <span>Ship</span>
@@ -342,6 +395,8 @@ export default function TradeRoutesPage({ visual }) {
               <span>Sort routes by</span>
               <select className="app-select" value={form.sortBy} onChange={(event) => setForm((current) => ({ ...current, sortBy: event.target.value }))}>
                 <option value="profit">Total profit</option>
+                <option value="efficiency">Profit / min</option>
+                <option value="time">Fastest</option>
                 <option value="margin">Margin %</option>
                 <option value="unit">Profit / SCU</option>
               </select>
@@ -415,8 +470,8 @@ export default function TradeRoutesPage({ visual }) {
 
         <SectionCard title="Best routes" className="trade-results-card">
           {loading ? <p className="empty-text">Loading local trade snapshot...</p> : null}
-          {!loading && !results.length ? <p className="empty-text">No profitable {form.routeMode === "circular" ? "loop" : "route"} found for the current budget, ship and origin.</p> : null}
-          {!!results.length ? (
+          {!loading && !enrichedResults.length ? <p className="empty-text">No profitable {form.routeMode === "circular" ? "loop" : "route"} found for the current budget, ship and origin.</p> : null}
+          {!!enrichedResults.length ? (
             <div className="trade-results">
               {visibleResults.map((item, index) => (
                 <button key={`${item.mode || "single"}-${item.originTerminalId}-${item.destinationTerminalId}-${index}`} className={`trade-route-card ${selectedIndex === index ? "is-selected" : ""}`} onClick={() => setSelectedIndex(index)}>
@@ -427,17 +482,16 @@ export default function TradeRoutesPage({ visual }) {
                   {item.mode === "circular" ? (
                     <>
                       <div className="trade-route-path">
-                        <span className="trade-leg">{item.legs[0]?.originName}</span>
-                        <span className="trade-arrow">-&gt;</span>
-                        <span className="trade-leg">{item.legs[0]?.destinationName}</span>
-                        <span className="trade-arrow">-&gt;</span>
-                        <span className="trade-leg">{item.legs[1]?.destinationName}</span>
-                        <span className="trade-arrow">-&gt;</span>
-                        <span className="trade-leg">{item.legs[2]?.destinationName}</span>
+                        {[item.legs[0]?.originName, ...item.legs.map((leg) => leg.destinationName)].map((step, stepIndex, allSteps) => (
+                          <div key={`loop-path-${index}-${stepIndex}`} className="trade-path-step">
+                            <span className="trade-leg">{step}</span>
+                            {stepIndex < allSteps.length - 1 ? <span className="trade-arrow">-&gt;</span> : null}
+                          </div>
+                        ))}
                       </div>
                       <div className="trade-route-locations trade-loop-lines">
                         {item.legs.map((leg, legIndex) => (
-                          <span key={`loop-${index}-${legIndex}`}>Leg {legIndex + 1}: {leg.commodityName} · {leg.originName} → {leg.destinationName}</span>
+                          <span key={`loop-${index}-${legIndex}`}>Leg {legIndex + 1}: {leg.commodityName} · {leg.originName} -&gt; {leg.destinationName}</span>
                         ))}
                       </div>
                     </>
@@ -464,8 +518,8 @@ export default function TradeRoutesPage({ visual }) {
                       <strong>{item.mode === "circular" ? `${item.legs.length} legs` : `${item.quantity} SCU`}</strong>
                     </div>
                     <div className="trade-metric-block">
-                      <small>{item.mode === "circular" ? "Avg / leg" : "Profit / SCU"}</small>
-                      <strong>{fmtMoney(item.mode === "circular" ? item.avgLegProfit : item.unitProfit)}</strong>
+                      <small>{item.mode === "circular" ? "Profit / min" : "Profit / SCU"}</small>
+                      <strong>{fmtMoney(item.mode === "circular" ? item.profitPerMinute : item.unitProfit)}</strong>
                     </div>
                   </div>
                 </button>
@@ -488,8 +542,8 @@ export default function TradeRoutesPage({ visual }) {
                       <div className="route-step" key={`selected-loop-${index}`}>
                         <strong>Leg {index + 1}</strong>
                         <span>{leg.commodityName}</span>
-                        <span>{leg.originName} → {leg.destinationName}</span>
-                        <span>{fmtMoney(leg.profit)}</span>
+                        <span>{leg.originName} -&gt; {leg.destinationName}</span>
+                        <span>{fmtMoney(leg.profit)} · {Math.round(leg.estimatedMinutes || 0)} min</span>
                       </div>
                     ))}
                   </div>
@@ -525,8 +579,8 @@ export default function TradeRoutesPage({ visual }) {
                       <span>{fmtMoney(visibleSelectedRoute.endingFunds)}</span>
                     </div>
                     <div className="source-card">
-                      <strong>Avg profit / leg</strong>
-                      <span>{fmtMoney(visibleSelectedRoute.avgLegProfit)}</span>
+                      <strong>Profit / min</strong>
+                      <span>{fmtMoney(visibleSelectedRoute.profitPerMinute)}</span>
                     </div>
                   </>
                 ) : (
@@ -550,8 +604,8 @@ export default function TradeRoutesPage({ visual }) {
                   <span>{fmtMoney(visibleSelectedRoute.profit)}</span>
                 </div>
                 <div className="source-card">
-                  <strong>{visibleSelectedRoute.mode === "circular" ? "Loop investment" : "Investment"}</strong>
-                  <span>{fmtMoney(visibleSelectedRoute.investment)}</span>
+                  <strong>{visibleSelectedRoute.mode === "circular" ? "Estimated duration" : "Investment"}</strong>
+                  <span>{visibleSelectedRoute.mode === "circular" ? `${Math.round(visibleSelectedRoute.estimatedMinutes || 0)} min` : fmtMoney(visibleSelectedRoute.investment)}</span>
                 </div>
                 <div className="source-card">
                   <strong>Margin</strong>
@@ -580,8 +634,8 @@ export default function TradeRoutesPage({ visual }) {
                 <div className="trade-estimate-value">{visibleSelectedRoute.quantity} SCU</div>
                 <div className="trade-estimate-meta">
                   {visibleSelectedRoute.mode === "circular"
-                    ? `${visibleSelectedRoute.commodityCount} commodity types / ${visibleSelectedRoute.legs.length} trade legs`
-                    : `Buy stock ${fmtNumber(visibleSelectedRoute.availabilityScu)} / destination demand ${fmtNumber(visibleSelectedRoute.destinationDemandScu)}`}
+                    ? `${visibleSelectedRoute.commodityCount} commodity types / ${visibleSelectedRoute.legs.length} trade legs / ${Math.round(visibleSelectedRoute.estimatedMinutes || 0)} min`
+                    : `Buy stock ${fmtNumber(visibleSelectedRoute.availabilityScu)} / destination demand ${fmtNumber(visibleSelectedRoute.destinationDemandScu)} / ${Math.round(visibleSelectedRoute.estimatedMinutes || 0)} min`}
                 </div>
               </div>
             </div>

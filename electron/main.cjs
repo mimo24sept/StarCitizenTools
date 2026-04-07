@@ -9,6 +9,7 @@ const isDev = Boolean(devServerUrl);
 const ROOT_DIR = path.join(__dirname, "..");
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const TRADE_SNAPSHOT_PATH = path.join(DATA_DIR, "trade_snapshot.json");
+const TRADE_DISTANCE_CACHE_PATH = path.join(DATA_DIR, "trade_distance_cache.json");
 const UEX_API_BASE = "https://api.uexcorp.uk/2.0";
 let mainWindow = null;
 let overlayWindow = null;
@@ -24,6 +25,28 @@ async function fetchJson(endpoint) {
     throw new Error(`UEX ${endpoint} failed with HTTP ${response.status}`);
   }
   return await response.json();
+}
+
+async function readJsonFile(filePath, fallback) {
+  try {
+    const content = await fs.promises.readFile(filePath, "utf8");
+    return JSON.parse(content);
+  } catch {
+    return fallback;
+  }
+}
+
+function getDistanceCacheKey(originTerminalId, destinationTerminalId) {
+  const left = Number(originTerminalId);
+  const right = Number(destinationTerminalId);
+  if (!left || !right) return "";
+  return left < right ? `${left}:${right}` : `${right}:${left}`;
+}
+
+async function fetchTerminalDistance(originTerminalId, destinationTerminalId) {
+  const payload = await fetchJson(`terminals_distances?id_terminal_origin=${originTerminalId}&id_terminal_destination=${destinationTerminalId}`);
+  const distance = Number(payload?.data?.distance);
+  return Number.isFinite(distance) && distance > 0 ? distance : null;
 }
 
 function simplifyVehicle(item) {
@@ -299,6 +322,39 @@ ipcMain.handle("trade:get-snapshot", async () => {
     return {
       ok: true,
       snapshot: JSON.parse(content)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: String(error)
+    };
+  }
+});
+
+ipcMain.handle("trade:resolve-distances", async (_event, pairs = []) => {
+  try {
+    await fs.promises.mkdir(DATA_DIR, { recursive: true });
+    const cache = await readJsonFile(TRADE_DISTANCE_CACHE_PATH, {});
+    const result = {};
+
+    for (const pair of pairs) {
+      const originTerminalId = Number(pair?.originTerminalId);
+      const destinationTerminalId = Number(pair?.destinationTerminalId);
+      const key = getDistanceCacheKey(originTerminalId, destinationTerminalId);
+      if (!key) continue;
+
+      if (!(key in cache)) {
+        cache[key] = await fetchTerminalDistance(originTerminalId, destinationTerminalId);
+      }
+
+      result[key] = cache[key];
+    }
+
+    await fs.promises.writeFile(TRADE_DISTANCE_CACHE_PATH, JSON.stringify(cache), "utf8");
+
+    return {
+      ok: true,
+      distances: result
     };
   } catch (error) {
     return {

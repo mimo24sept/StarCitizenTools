@@ -1322,6 +1322,12 @@ textarea {
   align-items: center;
 }
 
+.trade-path-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .trade-leg {
   font-weight: 700;
 }

@@ -1,3 +1,5 @@
+import { TRADE_MAP_CONNECTIONS } from './utils/constants';
+
 function safeNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -5,6 +7,13 @@ function safeNumber(value, fallback = 0) {
 
 function uniqueParts(parts) {
   return [...new Set(parts.filter(Boolean))];
+}
+
+export function getDistancePairKey(originTerminalId, destinationTerminalId) {
+  const left = safeNumber(originTerminalId, 0);
+  const right = safeNumber(destinationTerminalId, 0);
+  if (!left || !right) return "";
+  return left < right ? `${left}:${right}` : `${right}:${left}`;
 }
 
 export async function loadTradeSnapshot() {
@@ -61,6 +70,75 @@ function buildIndexes(snapshot) {
   return { terminalById, commodityById };
 }
 
+function findSystemPath(start, goal) {
+  if (!start || !goal) return [start || goal].filter(Boolean);
+  if (start === goal) return [start];
+
+  const queue = [[start]];
+  const seen = new Set([start]);
+
+  while (queue.length) {
+    const path = queue.shift();
+    const current = path[path.length - 1];
+    const neighbors = Object.keys(TRADE_MAP_CONNECTIONS[current] || {});
+
+    for (const neighbor of neighbors) {
+      if (seen.has(neighbor)) continue;
+      const nextPath = [...path, neighbor];
+      if (neighbor === goal) return nextPath;
+      seen.add(neighbor);
+      queue.push(nextPath);
+    }
+  }
+
+  return [start, goal];
+}
+
+function estimateInSystemTravelMinutes(originTerminal, destinationTerminal) {
+  if (!originTerminal || !destinationTerminal) return 16;
+  if (originTerminal.id === destinationTerminal.id) return 1;
+
+  const sameStation = originTerminal.station && destinationTerminal.station && originTerminal.station === destinationTerminal.station;
+  const sameCity = originTerminal.city && destinationTerminal.city && originTerminal.city === destinationTerminal.city;
+  const sameOutpost = originTerminal.outpost && destinationTerminal.outpost && originTerminal.outpost === destinationTerminal.outpost;
+  if (sameStation || sameCity || sameOutpost) return 4;
+
+  const sameOrbit = originTerminal.orbit && destinationTerminal.orbit && originTerminal.orbit === destinationTerminal.orbit;
+  if (sameOrbit) return 6;
+
+  const sameMoon = originTerminal.moon && destinationTerminal.moon && originTerminal.moon === destinationTerminal.moon;
+  if (sameMoon) return 8;
+
+  const samePlanet = originTerminal.planet && destinationTerminal.planet && originTerminal.planet === destinationTerminal.planet;
+  if (samePlanet) return 12;
+
+  return 18;
+}
+
+function estimateTravelMinutes(originTerminal, destinationTerminal) {
+  if (!originTerminal || !destinationTerminal) return 24;
+
+  if (originTerminal.starSystem === destinationTerminal.starSystem) {
+    return estimateInSystemTravelMinutes(originTerminal, destinationTerminal);
+  }
+
+  const systemPath = findSystemPath(originTerminal.starSystem, destinationTerminal.starSystem);
+  const jumpCount = Math.max(1, systemPath.length - 1);
+  const originSide = estimateInSystemTravelMinutes(originTerminal, { ...originTerminal, id: -1, station: 'gateway' });
+  const destinationSide = estimateInSystemTravelMinutes(destinationTerminal, { ...destinationTerminal, id: -2, station: 'gateway' });
+  return originSide + destinationSide + jumpCount * 22;
+}
+
+function estimateTradeDurationMinutes(originTerminal, destinationTerminal, resolvedDistanceGm = null) {
+  if (Number.isFinite(resolvedDistanceGm) && resolvedDistanceGm > 0) {
+    const terminalOpsMinutes = 4;
+    const transitMinutes = Math.max(2, resolvedDistanceGm / 8);
+    return terminalOpsMinutes + transitMinutes;
+  }
+  const serviceMinutes = 4;
+  return estimateTravelMinutes(originTerminal, destinationTerminal) + serviceMinutes;
+}
+
 function createRouteFromListings(buy, sell, originTerminal, destinationTerminal, commodity, availableBudget, cargoCapacity) {
   const byBudget = Math.floor(availableBudget / buy.priceBuy);
   const byCargo = cargoCapacity;
@@ -79,6 +157,8 @@ function createRouteFromListings(buy, sell, originTerminal, destinationTerminal,
   const revenue = quantity * sell.priceSell;
   const profit = revenue - investment;
   const marginPercent = investment > 0 ? (profit / investment) * 100 : 0;
+  const estimatedMinutes = estimateTradeDurationMinutes(originTerminal, destinationTerminal);
+  const profitPerMinute = estimatedMinutes > 0 ? profit / estimatedMinutes : profit;
 
   return {
     mode: "single",
@@ -102,13 +182,19 @@ function createRouteFromListings(buy, sell, originTerminal, destinationTerminal,
     revenue,
     profit,
     marginPercent,
+    estimatedMinutes,
+    profitPerMinute,
     availabilityScu: buy.scuBuy,
     destinationDemandScu: sell.scuSellStock
   };
 }
 
 function compareRoutes(left, right, sortBy) {
-  if (sortBy === "unit") {
+  if (sortBy === "efficiency") {
+    if ((right.profitPerMinute ?? 0) !== (left.profitPerMinute ?? 0)) return (right.profitPerMinute ?? 0) - (left.profitPerMinute ?? 0);
+  } else if (sortBy === "time") {
+    if ((left.estimatedMinutes ?? 0) !== (right.estimatedMinutes ?? 0)) return (left.estimatedMinutes ?? 0) - (right.estimatedMinutes ?? 0);
+  } else if (sortBy === "unit") {
     if (right.unitProfit !== left.unitProfit) return right.unitProfit - left.unitProfit;
   } else if (sortBy === "margin") {
     if (right.marginPercent !== left.marginPercent) return right.marginPercent - left.marginPercent;
@@ -183,6 +269,10 @@ export function calculateBestRoutes(snapshot, options) {
   return routes.slice(0, 100);
 }
 
+export function sortTradeRoutes(routes, sortBy = "profit") {
+  return [...(routes ?? [])].sort((left, right) => compareRoutes(left, right, sortBy));
+}
+
 export function calculateCircularRoutes(snapshot, options) {
   if (!snapshot) return [];
 
@@ -190,6 +280,7 @@ export function calculateCircularRoutes(snapshot, options) {
   const cargoCapacity = Math.max(0, Math.floor(safeNumber(options.cargoCapacity, 0)));
   const originTerminalId = safeNumber(options.originTerminalId, 0);
   const sortBy = options.sortBy || "profit";
+  const loopLegCount = Math.min(5, Math.max(3, Math.floor(safeNumber(options.loopLegCount, 3))));
   if (!budget || !cargoCapacity) return [];
 
   const baseRoutes = buildProfitableRoutes(snapshot, { ...options, originTerminalId: 0 });
@@ -206,6 +297,8 @@ export function calculateCircularRoutes(snapshot, options) {
   const startTerminalIds = originTerminalId ? [originTerminalId] : Array.from(outgoingByOrigin.keys());
   const loops = [];
   const seen = new Set();
+  const maxLoops = 120;
+  const branchFactor = loopLegCount >= 5 ? 4 : 6;
 
   function recalcLeg(baseRoute, availableFunds) {
     const byBudget = Math.floor(availableFunds / baseRoute.buyPrice);
@@ -230,83 +323,140 @@ export function calculateCircularRoutes(snapshot, options) {
     };
   }
 
-  for (const startId of startTerminalIds) {
-    const leg1Candidates = (outgoingByOrigin.get(startId) ?? []).slice(0, 8);
-    for (const leg1Base of leg1Candidates) {
-      const terminalB = leg1Base.destinationTerminalId;
-      if (!terminalB || terminalB === startId) continue;
+  function scoreBaseRoute(route) {
+    if (sortBy === "efficiency") return route.profitPerMinute ?? 0;
+    if (sortBy === "margin") return route.marginPercent ?? 0;
+    if (sortBy === "unit") return route.unitProfit ?? 0;
+    return route.profit ?? 0;
+  }
 
-      const leg2Candidates = (outgoingByOrigin.get(terminalB) ?? []).filter((item) => item.destinationTerminalId !== startId && item.destinationTerminalId !== terminalB).slice(0, 8);
-      for (const leg2Base of leg2Candidates) {
-        const terminalC = leg2Base.destinationTerminalId;
-        if (!terminalC || terminalC === startId || terminalC === terminalB) continue;
+  function buildLoopFromBases(loopBases, startingFunds) {
+    let funds = startingFunds;
+    const legs = [];
 
-        const leg3Candidates = (outgoingByOrigin.get(terminalC) ?? []).filter((item) => item.destinationTerminalId === startId).slice(0, 6);
-        for (const leg3Base of leg3Candidates) {
-          const key = [
-            startId,
-            terminalB,
-            terminalC,
-            leg1Base.commodityId,
-            leg2Base.commodityId,
-            leg3Base.commodityId
-          ].join(":");
-          if (seen.has(key)) continue;
-          seen.add(key);
-
-          let funds = budget;
-          const leg1 = recalcLeg(leg1Base, funds);
-          if (!leg1) continue;
-          funds += leg1.profit;
-
-          const leg2 = recalcLeg(leg2Base, funds);
-          if (!leg2) continue;
-          funds += leg2.profit;
-
-          const leg3 = recalcLeg(leg3Base, funds);
-          if (!leg3) continue;
-
-          const legs = [leg1, leg2, leg3];
-          const totalProfit = legs.reduce((sum, leg) => sum + leg.profit, 0);
-          const totalInvestment = legs.reduce((sum, leg) => sum + leg.investment, 0);
-          const endingFunds = budget + totalProfit;
-          const unitProfit = totalProfit / Math.max(cargoCapacity, 1);
-          const avgLegProfit = totalProfit / legs.length;
-          const uniqueCommodities = [...new Set(legs.map((leg) => leg.commodityName))];
-
-          loops.push({
-            mode: "circular",
-            loopLabel: `${leg1.originName} -> ${leg1.destinationName} -> ${leg2.destinationName} -> ${leg3.destinationName}`,
-            commodityName: uniqueCommodities.join(" / "),
-            commoditySummary: uniqueCommodities.join(" / "),
-            commodityCount: uniqueCommodities.length,
-            originTerminalId: leg1.originTerminalId,
-            originName: leg1.originName,
-            originRegion: leg1.originRegion,
-            destinationTerminalId: leg3.destinationTerminalId,
-            destinationName: leg3.destinationName,
-            destinationRegion: leg3.destinationRegion,
-            originSystem: leg1.originSystem,
-            destinationSystem: leg3.destinationSystem,
-            isIllegal: legs.some((leg) => leg.isIllegal),
-            legs,
-            quantity: Math.min(...legs.map((leg) => leg.quantity)),
-            profit: totalProfit,
-            unitProfit,
-            avgLegProfit,
-            investment: totalInvestment,
-            endingFunds,
-            marginPercent: budget > 0 ? (totalProfit / budget) * 100 : 0,
-            availabilityScu: Math.min(...legs.map((leg) => leg.availabilityScu || cargoCapacity)),
-            destinationDemandScu: Math.min(...legs.map((leg) => leg.destinationDemandScu || cargoCapacity))
-          });
-        }
-      }
+    for (const baseLeg of loopBases) {
+      const leg = recalcLeg(baseLeg, funds);
+      if (!leg) return null;
+      funds += leg.profit;
+      legs.push(leg);
     }
+
+    const totalProfit = legs.reduce((sum, leg) => sum + leg.profit, 0);
+    const totalInvestment = legs.reduce((sum, leg) => sum + leg.investment, 0);
+    const endingFunds = startingFunds + totalProfit;
+    const unitProfit = totalProfit / Math.max(cargoCapacity, 1);
+    const avgLegProfit = totalProfit / legs.length;
+    const totalMinutes = legs.reduce((sum, leg) => sum + (leg.estimatedMinutes || 0), 0);
+    const profitPerMinute = totalMinutes > 0 ? totalProfit / totalMinutes : totalProfit;
+    const uniqueCommodities = [...new Set(legs.map((leg) => leg.commodityName))];
+
+    return {
+      mode: "circular",
+      loopLabel: [legs[0].originName, ...legs.map((leg) => leg.destinationName)].join(" -> "),
+      commodityName: uniqueCommodities.join(" / "),
+      commoditySummary: uniqueCommodities.join(" / "),
+      commodityCount: uniqueCommodities.length,
+      originTerminalId: legs[0].originTerminalId,
+      originName: legs[0].originName,
+      originRegion: legs[0].originRegion,
+      destinationTerminalId: legs[legs.length - 1].destinationTerminalId,
+      destinationName: legs[legs.length - 1].destinationName,
+      destinationRegion: legs[legs.length - 1].destinationRegion,
+      originSystem: legs[0].originSystem,
+      destinationSystem: legs[legs.length - 1].destinationSystem,
+      isIllegal: legs.some((leg) => leg.isIllegal),
+      legs,
+      quantity: Math.min(...legs.map((leg) => leg.quantity)),
+      profit: totalProfit,
+      unitProfit,
+      avgLegProfit,
+      investment: totalInvestment,
+      endingFunds,
+      marginPercent: startingFunds > 0 ? (totalProfit / startingFunds) * 100 : 0,
+      estimatedMinutes: totalMinutes,
+      profitPerMinute,
+      availabilityScu: Math.min(...legs.map((leg) => leg.availabilityScu || cargoCapacity)),
+      destinationDemandScu: Math.min(...legs.map((leg) => leg.destinationDemandScu || cargoCapacity))
+    };
+  }
+
+  function walkLoop(startId, currentId, visited, pathBases) {
+    if (loops.length >= maxLoops) return;
+
+    const depth = pathBases.length;
+    const remaining = loopLegCount - depth;
+    const candidates = (outgoingByOrigin.get(currentId) ?? [])
+      .filter((item) => {
+        if (remaining === 1) return item.destinationTerminalId === startId;
+        return item.destinationTerminalId !== startId && item.destinationTerminalId !== currentId && !visited.has(item.destinationTerminalId);
+      })
+      .sort((left, right) => scoreBaseRoute(right) - scoreBaseRoute(left))
+      .slice(0, branchFactor);
+
+    for (const candidate of candidates) {
+      const nextPath = [...pathBases, candidate];
+      if (remaining === 1) {
+        const signature = nextPath.map((leg) => `${leg.originTerminalId}:${leg.destinationTerminalId}:${leg.commodityId}`).join("|");
+        if (seen.has(signature)) continue;
+        seen.add(signature);
+        const loop = buildLoopFromBases(nextPath, budget);
+        if (loop) loops.push(loop);
+        continue;
+      }
+
+      const nextVisited = new Set(visited);
+      nextVisited.add(candidate.destinationTerminalId);
+      walkLoop(startId, candidate.destinationTerminalId, nextVisited, nextPath);
+      if (loops.length >= maxLoops) return;
+    }
+  }
+
+  for (const startId of startTerminalIds) {
+    walkLoop(startId, startId, new Set([startId]), []);
+    if (loops.length >= maxLoops) break;
   }
 
   loops.sort((left, right) => compareRoutes(left, right, sortBy));
   return loops.slice(0, 60);
+}
+
+export function enrichRoutesWithDistanceMap(routes, snapshot, distanceMap = {}) {
+  if (!snapshot || !routes?.length) return routes ?? [];
+
+  const { terminalById } = buildIndexes(snapshot);
+
+  function enrichLeg(leg) {
+    const originTerminal = terminalById.get(leg.originTerminalId);
+    const destinationTerminal = terminalById.get(leg.destinationTerminalId);
+    const distanceKey = getDistancePairKey(leg.originTerminalId, leg.destinationTerminalId);
+    const resolvedDistanceGm = Number(distanceMap?.[distanceKey]);
+    const estimatedMinutes = estimateTradeDurationMinutes(
+      originTerminal,
+      destinationTerminal,
+      Number.isFinite(resolvedDistanceGm) ? resolvedDistanceGm : null
+    );
+    return {
+      ...leg,
+      distanceGm: Number.isFinite(resolvedDistanceGm) ? resolvedDistanceGm : leg.distanceGm ?? null,
+      estimatedMinutes,
+      profitPerMinute: estimatedMinutes > 0 ? leg.profit / estimatedMinutes : leg.profit
+    };
+  }
+
+  return routes.map((route) => {
+    if (route.mode === "circular") {
+      const legs = route.legs.map(enrichLeg);
+      const estimatedMinutes = legs.reduce((sum, leg) => sum + (leg.estimatedMinutes || 0), 0);
+      return {
+        ...route,
+        legs,
+        estimatedMinutes,
+        profitPerMinute: estimatedMinutes > 0 ? route.profit / estimatedMinutes : route.profit
+      };
+    }
+
+    return enrichLeg(route);
+  });
 }
 
 export function diversifyRoutes(routes, maxPerCommodity = 2, limit = 24) {

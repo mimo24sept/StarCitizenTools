@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("desktopAPI", {
   runSync: () => ipcRenderer.invoke("sync:run"),
   runTradeSync: () => ipcRenderer.invoke("trade:sync"),
   getTradeSnapshot: () => ipcRenderer.invoke("trade:get-snapshot"),
+  resolveTradeDistances: (pairs) => ipcRenderer.invoke("trade:resolve-distances", pairs),
   getOverlayState: () => ipcRenderer.invoke("overlay:get-state"),
   showOverlay: (route) => ipcRenderer.invoke("overlay:show", route),
   hideOverlay: () => ipcRenderer.invoke("overlay:hide"),
