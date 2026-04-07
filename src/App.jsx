@@ -1,13 +1,16 @@
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createDbClient } from './dbClient';
 import { PAGE_VISUALS } from './utils/constants';
-import { fmtSeconds, toNumber, getIngredientQualityKey } from './utils/helpers';
-import SectionCard from './components/SectionCard';
-import Hero from './components/Hero';
-import TradePage from './pages/TradePage';
+import AppState from './components/AppState';
+import CraftingPage from './pages/CraftingPage';
 import TradeRoutesPage from './pages/TradeRoutesPage';
 import LoadoutsPage from './pages/LoadoutsPage';
 import WikeloPage from './pages/WikeloPage';
+
+function randomVisual(page) {
+  const set = PAGE_VISUALS[page] ?? [];
+  return set[Math.floor(Math.random() * set.length)] ?? { kicker: "", title: "", subtitle: "" };
+}
 
 export default function App() {
   const [db, setDb] = useState(null);

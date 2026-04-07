@@ -46,6 +46,18 @@ async function fetchJson(endpoint, params = {}) {
   return response.json();
 }
 
+function normalizeFilterHintValue(value) {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value && typeof value === "object") {
+    if (typeof value.name === "string" && value.name.trim()) return value.name;
+    if (typeof value.value === "string" && value.value.trim()) return value.value;
+    if (typeof value.loc_key === "string" && value.loc_key.trim()) return value.loc_key;
+    return JSON.stringify(value);
+  }
+  return "";
+}
+
 async function fetchBlueprintWithRetry(id, version) {
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
@@ -61,6 +73,40 @@ async function fetchBlueprintWithRetry(id, version) {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function sanitizeSqlParam(value) {
+  if (value === undefined) return null;
+  if (value === null) return null;
+  if (typeof value === "string" || typeof value === "number") return value;
+  if (typeof value === "boolean") return value ? 1 : 0;
+  if (value instanceof Date) return value.toISOString();
+  return JSON.stringify(value);
+}
+
+async function fetchBlueprintPage(version, page = 1, limit = 100) {
+  return fetchJson('/blueprints', { version, page, limit });
+}
+
+async function fetchAllBlueprints(version, logCallback = console.log) {
+  const allItems = [];
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const payload = await fetchBlueprintPage(version, page, 100);
+    totalPages = Number(payload?.pagination?.pages ?? 1);
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    allItems.push(...items);
+    logCallback(`Fetched blueprint page ${page}/${totalPages} (${allItems.length} loaded)`);
+    page += 1;
+  }
+
+  return allItems.sort((a, b) => Number(a.id ?? 0) - Number(b.id ?? 0));
+}
+
+function sanitizeSqlParams(params = []) {
+  return params.map(sanitizeSqlParam);
+}
 
 async function runSync(dataDir, logCallback = console.log) {
   const dbPath = path.join(dataDir, 'craft_tracker.db');
@@ -81,13 +127,13 @@ async function runSync(dataDir, logCallback = console.log) {
   }
 
   function run(sql, params = []) {
-    db.run(sql, params);
+    db.run(sql, sanitizeSqlParams(params));
   }
 
   function queryOne(sql, params = []) {
     const stmt = db.prepare(sql);
     let result = null;
-    stmt.bind(params);
+    stmt.bind(sanitizeSqlParams(params));
     if (stmt.step()) {
         result = stmt.getAsObject();
     }
@@ -104,6 +150,11 @@ async function runSync(dataDir, logCallback = console.log) {
     run(`UPDATE sync_runs SET status=?, imported_blueprints=?, last_blueprint_id=?, message=?, ended_at=CASE WHEN ? IN ('done', 'failed') THEN ? ELSE ended_at END WHERE id=?`, [status, imported, lastId, message, status, new Date().toISOString(), runId]);
   }
 
+  let runId = null;
+  let imported = 0;
+  let lastId = 0;
+  let chosenVersion = "";
+
   try {
     logCallback("Fetching versions...");
     const versions = await fetchJson('/versions');
@@ -113,32 +164,32 @@ async function runSync(dataDir, logCallback = console.log) {
 
     const versionsList = db.exec("SELECT * FROM versions ORDER BY active DESC, CASE channel WHEN 'live' THEN 0 ELSE 1 END, created_at DESC")[0]?.values || [];
     if (!versionsList.length) throw new Error("No versions available.");
-    const chosenVersion = versionsList[0][1]; // version string
+    chosenVersion = versionsList[0][1]; // version string
     logCallback(`Chosen version: ${chosenVersion}`);
 
     const hints = await fetchJson('/filter-hints', { version: chosenVersion });
     run("DELETE FROM filter_values WHERE version=?", [chosenVersion]);
     for (const [type, values] of Object.entries(hints)) {
       for (const val of values) {
-        run("INSERT OR IGNORE INTO filter_values(value_type, value, version) VALUES(?,?,?)", [type, val, chosenVersion]);
+        const normalizedValue = normalizeFilterHintValue(val);
+        if (!normalizedValue) continue;
+        run("INSERT OR IGNORE INTO filter_values(value_type, value, version) VALUES(?,?,?)", [type, normalizedValue, chosenVersion]);
       }
     }
 
     const stats = await fetchJson('/stats', { version: chosenVersion });
     run("INSERT INTO stats_snapshot(version, total_blueprints, unique_ingredients, raw_json, fetched_at) VALUES(?,?,?,?,?) ON CONFLICT(version) DO UPDATE SET total_blueprints=excluded.total_blueprints, unique_ingredients=excluded.unique_ingredients, raw_json=excluded.raw_json, fetched_at=excluded.fetched_at", [chosenVersion, stats.totalBlueprints, stats.uniqueIngredients, JSON.stringify(stats), new Date().toISOString()]);
 
-    const targetTotal = stats.totalBlueprints || 0;
-    const maxScan = Math.max(2500, targetTotal + 500);
-    let imported = 0;
-    let lastId = 0;
-    const runId = startSyncRun(chosenVersion);
+    const blueprints = await fetchAllBlueprints(chosenVersion, logCallback);
+    const targetTotal = blueprints.length || stats.totalBlueprints || 0;
+    runId = startSyncRun(chosenVersion);
 
     run("INSERT INTO metadata(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", ["last_sync_version", chosenVersion]);
+    run("INSERT INTO metadata(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", ["last_sync_expected_total", String(targetTotal)]);
 
-    for (let i = 1; i <= maxScan; i++) {
-        const payload = await fetchBlueprintWithRetry(i, chosenVersion);
-        lastId = i;
-        if (payload && payload.id) {
+    for (const payload of blueprints) {
+        if (!payload?.id) continue;
+        lastId = Number(payload.id);
             run(`
               INSERT INTO blueprints(id, blueprint_id, name, category, craft_time_seconds, tiers, default_owned, item_stats_json, version, raw_json, imported_at)
               VALUES(?,?,?,?,?,?,?,?,?,?,?)
@@ -165,16 +216,8 @@ async function runSync(dataDir, logCallback = console.log) {
             }
 
             imported++;
-            updateSyncRun(runId, 'running', imported, lastId, `Blueprint #${i} importe: ${payload.name}`);
+            updateSyncRun(runId, 'running', imported, lastId, `Blueprint #${payload.id} importe: ${payload.name}`);
             logCallback(`[${imported}] ${payload.name}`);
-
-            const countRows = queryOne("SELECT COUNT(*) as c FROM blueprints WHERE version=?", [chosenVersion]);
-            if (targetTotal && countRows && countRows.c >= targetTotal) {
-                break;
-            }
-        }
-        if (i % 10 === 0) logCallback(`Scan jusqu'a ID ${i}...`);
-        await sleep(2200 + Math.random() * 800); // Respect API limits
     }
     
     updateSyncRun(runId, 'done', imported, lastId, "Synchronisation terminee.");
@@ -183,6 +226,9 @@ async function runSync(dataDir, logCallback = console.log) {
     return { ok: true, version: chosenVersion, imported, lastId };
   } catch (error) {
     console.error(error);
+    if (runId) {
+      updateSyncRun(runId, 'failed', imported, lastId, String(error));
+    }
     exportDb(); // Export anyway to save logs
     return { ok: false, error: String(error) };
   }
