@@ -7,10 +7,6 @@ export const PAGE_VISUALS = {
     { kicker: "C2 Hercules", title: "Trade Routes", subtitle: "Plan efficient cargo loops, visualize the route, and stage a clean overlay path." },
     { kicker: "Caterpillar Lane", title: "Trade Routes", subtitle: "Create routes fast, tune for budget and comfort, and keep them saved locally." }
   ],
-  loadouts: [
-    { kicker: "Gladius Frame", title: "Loadouts", subtitle: "Build clean ship presets, note where components come from, and keep your fitting notes readable." },
-    { kicker: "Combat Deck", title: "Loadouts", subtitle: "A lighter, cleaner fitting notebook while the deeper Erkul-style source layer comes next." }
-  ],
   wikelo: [
     { kicker: "Wikelo Intel", title: "Wikelo", subtitle: "Track rare resources, remember how to obtain them, and keep progress between sessions." },
     { kicker: "Rare Material", title: "Wikelo", subtitle: "A practical farming memory layer for the hard-to-find things you never want to lose track of." }

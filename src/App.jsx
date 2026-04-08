@@ -4,7 +4,6 @@ import { PAGE_VISUALS } from './utils/constants';
 import AppState from './components/AppState';
 import CraftingPage from './pages/CraftingPage';
 import TradeRoutesPage from './pages/TradeRoutesPage';
-import LoadoutsPage from './pages/LoadoutsPage';
 import WikeloPage from './pages/WikeloPage';
 
 function randomVisual(page) {
@@ -25,7 +24,6 @@ export default function App() {
   const [visuals] = useState({
     crafting: randomVisual("crafting"),
     trade: randomVisual("trade"),
-    loadouts: randomVisual("loadouts"),
     wikelo: randomVisual("wikelo")
   });
 
@@ -110,7 +108,6 @@ export default function App() {
             {[
               ["crafting", "Crafting"],
               ["trade", "Trade Routes"],
-              ["loadouts", "Loadouts"],
               ["wikelo", "Wikelo"]
             ].map(([key, label], index) => (
               <button
@@ -131,7 +128,6 @@ export default function App() {
           <div className="content-frame">
             {activePage === "crafting" && <CraftingPage db={db} version={version} refreshToken={refreshToken} visual={visuals.crafting} onMutate={triggerRefresh} />}
             {activePage === "trade" && <TradeRoutesPage visual={visuals.trade} />}
-            {activePage === "loadouts" && <LoadoutsPage db={db} refreshToken={refreshToken} visual={visuals.loadouts} onMutate={triggerRefresh} />}
             {activePage === "wikelo" && <WikeloPage db={db} version={version} refreshToken={refreshToken} visual={visuals.wikelo} onMutate={triggerRefresh} />}
           </div>
         </main>

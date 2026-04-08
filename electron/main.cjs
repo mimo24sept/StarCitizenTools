@@ -9,6 +9,7 @@ const isDev = Boolean(devServerUrl);
 const ROOT_DIR = path.join(__dirname, "..");
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const TRADE_SNAPSHOT_PATH = path.join(DATA_DIR, "trade_snapshot.json");
+const LOADOUT_SNAPSHOT_PATH = path.join(DATA_DIR, "loadout_snapshot.json");
 const TRADE_DISTANCE_CACHE_PATH = path.join(DATA_DIR, "trade_distance_cache.json");
 const UEX_API_BASE = "https://api.uexcorp.uk/2.0";
 let mainWindow = null;
@@ -143,6 +144,75 @@ function simplifyPrice(item) {
     statusSell: Number(item.status_sell ?? 0),
     containerSizes: item.container_sizes ?? "",
     modifiedAt: Number(item.date_modified ?? 0)
+  };
+}
+
+function simplifyLoadoutCategory(item) {
+  return {
+    id: item.id,
+    type: item.type,
+    section: item.section,
+    name: item.name
+  };
+}
+
+function simplifyLoadoutAttribute(item) {
+  return {
+    itemId: item.id_item,
+    itemUuid: item.item_uuid ?? "",
+    categoryId: item.id_category,
+    attributeName: item.attribute_name,
+    value: item.value,
+    unit: item.unit ?? ""
+  };
+}
+
+function simplifyLoadoutComponent(item, category, attributes = []) {
+  const attributeMap = Object.fromEntries(
+    attributes.map((attribute) => [
+      attribute.attributeName,
+      {
+        value: attribute.value,
+        unit: attribute.unit ?? ""
+      }
+    ])
+  );
+
+  const size = String(item.size || attributeMap["Size"]?.value || "").trim();
+  return {
+    id: item.id,
+    uuid: item.uuid ?? "",
+    vehicleId: Number(item.id_vehicle ?? 0),
+    vehicleName: item.vehicle_name ?? "",
+    categoryId: category.id,
+    categoryName: category.name,
+    section: category.section,
+    manufacturer: item.company_name ?? "",
+    name: item.name,
+    slug: item.slug,
+    size,
+    typeLabel: String(attributeMap["Item Type"]?.value || category.name),
+    classLabel: String(attributeMap["Class"]?.value || ""),
+    grade: String(attributeMap["Grade"]?.value || ""),
+    screenshot: item.screenshot || "",
+    storeUrl: item.url_store || "",
+    attributes,
+    attributeMap
+  };
+}
+
+function simplifyLoadoutPrice(item) {
+  return {
+    id: item.id,
+    itemId: item.id_item,
+    categoryId: item.id_category,
+    terminalId: item.id_terminal,
+    priceBuy: Number(item.price_buy ?? 0),
+    priceSell: Number(item.price_sell ?? 0),
+    modifiedAt: Number(item.date_modified ?? 0),
+    itemName: item.item_name,
+    itemUuid: item.item_uuid ?? "",
+    terminalName: item.terminal_name
   };
 }
 
@@ -319,6 +389,117 @@ ipcMain.handle("trade:sync", async () => {
 ipcMain.handle("trade:get-snapshot", async () => {
   try {
     const content = await fs.promises.readFile(TRADE_SNAPSHOT_PATH, "utf8");
+    return {
+      ok: true,
+      snapshot: JSON.parse(content)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: String(error)
+    };
+  }
+});
+
+ipcMain.handle("loadout:sync", async () => {
+  try {
+    const [categoriesPayload, vehiclesPayload, terminalsPayload, pricesPayload] = await Promise.all([
+      fetchJson("categories"),
+      fetchJson("vehicles"),
+      fetchJson("terminals"),
+      fetchJson("items_prices_all")
+    ]);
+
+    const relevantCategoryNames = new Set([
+      "Coolers",
+      "Power Plants",
+      "Quantum Drives",
+      "Shield Generators",
+      "Guns",
+      "Missile Racks",
+      "Missiles",
+      "Turrets",
+      "Bombs",
+      "Bomb Racks",
+      "Point Defense Cannon"
+    ]);
+
+    const categories = (categoriesPayload.data ?? [])
+      .filter((item) => item.type === "item" && relevantCategoryNames.has(item.name))
+      .map(simplifyLoadoutCategory);
+
+    const categoryResults = await Promise.all(
+      categories.map(async (category) => {
+        const [itemsPayload, attributesPayload] = await Promise.all([
+          fetchJson(`items?id_category=${category.id}`),
+          fetchJson(`items_attributes?id_category=${category.id}`)
+        ]);
+
+        const rawAttributes = (attributesPayload.data ?? []).map(simplifyLoadoutAttribute);
+        const attributesByItemId = new Map();
+
+        for (const attribute of rawAttributes) {
+          if (!attributesByItemId.has(attribute.itemId)) {
+            attributesByItemId.set(attribute.itemId, []);
+          }
+          attributesByItemId.get(attribute.itemId).push(attribute);
+        }
+
+        const components = (itemsPayload.data ?? []).map((item) =>
+          simplifyLoadoutComponent(item, category, attributesByItemId.get(item.id) ?? [])
+        );
+
+        return {
+          category,
+          components
+        };
+      })
+    );
+
+    const components = categoryResults.flatMap((entry) => entry.components);
+    const relevantItemIds = new Set(components.map((item) => item.id));
+    const prices = (pricesPayload.data ?? [])
+      .filter((item) => relevantItemIds.has(item.id_item) && (Number(item.price_buy ?? 0) > 0 || Number(item.price_sell ?? 0) > 0))
+      .map(simplifyLoadoutPrice);
+
+    const snapshot = {
+      source: "UEX API 2.0",
+      apiBase: UEX_API_BASE,
+      fetchedAt: new Date().toISOString(),
+      categories,
+      vehicles: (vehiclesPayload.data ?? [])
+        .map(simplifyVehicle)
+        .filter((item) => item.isSpaceship || item.isGroundVehicle),
+      terminals: (terminalsPayload.data ?? []).map(simplifyTerminal),
+      components,
+      prices
+    };
+
+    await fs.promises.mkdir(DATA_DIR, { recursive: true });
+    await fs.promises.writeFile(LOADOUT_SNAPSHOT_PATH, JSON.stringify(snapshot), "utf8");
+
+    return {
+      ok: true,
+      fetchedAt: snapshot.fetchedAt,
+      counts: {
+        categories: snapshot.categories.length,
+        vehicles: snapshot.vehicles.length,
+        components: snapshot.components.length,
+        prices: snapshot.prices.length,
+        terminals: snapshot.terminals.length
+      }
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: String(error)
+    };
+  }
+});
+
+ipcMain.handle("loadout:get-snapshot", async () => {
+  try {
+    const content = await fs.promises.readFile(LOADOUT_SNAPSHOT_PATH, "utf8");
     return {
       ok: true,
       snapshot: JSON.parse(content)

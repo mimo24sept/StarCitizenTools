@@ -2,7 +2,7 @@
   "name": "star-citizen-tools",
   "version": "0.1.0",
   "private": true,
-  "description": "Local Star Citizen companion app for crafting, trade routes, loadouts and lightweight overlays.",
+  "description": "Local Star Citizen companion app for crafting, trade routes, rare-resource tracking and lightweight overlays.",
   "author": "mimo24sept",
   "main": "electron/main.cjs",
   "type": "module",
