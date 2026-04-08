@@ -10,8 +10,10 @@ const ROOT_DIR = path.join(__dirname, "..");
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const TRADE_SNAPSHOT_PATH = path.join(DATA_DIR, "trade_snapshot.json");
 const LOADOUT_SNAPSHOT_PATH = path.join(DATA_DIR, "loadout_snapshot.json");
+const WIKELO_SNAPSHOT_PATH = path.join(DATA_DIR, "wikelo_snapshot.json");
 const TRADE_DISTANCE_CACHE_PATH = path.join(DATA_DIR, "trade_distance_cache.json");
 const UEX_API_BASE = "https://api.uexcorp.uk/2.0";
+const WIKELO_DATA_URL = "https://raw.githubusercontent.com/SeekND/Wikelo/main/data/wikelo_data.json";
 let mainWindow = null;
 let overlayWindow = null;
 const overlayState = {
@@ -389,6 +391,56 @@ ipcMain.handle("trade:sync", async () => {
 ipcMain.handle("trade:get-snapshot", async () => {
   try {
     const content = await fs.promises.readFile(TRADE_SNAPSHOT_PATH, "utf8");
+    return {
+      ok: true,
+      snapshot: JSON.parse(content)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: String(error)
+    };
+  }
+});
+
+ipcMain.handle("wikelo:sync", async () => {
+  try {
+    const response = await fetch(WIKELO_DATA_URL);
+    if (!response.ok) {
+      throw new Error(`Wikelo sync failed with HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const snapshot = {
+      source: "SeekND/Wikelo",
+      repo: "https://github.com/SeekND/Wikelo",
+      fetchedAt: new Date().toISOString(),
+      data
+    };
+
+    await fs.promises.mkdir(DATA_DIR, { recursive: true });
+    await fs.promises.writeFile(WIKELO_SNAPSHOT_PATH, JSON.stringify(snapshot), "utf8");
+
+    return {
+      ok: true,
+      fetchedAt: snapshot.fetchedAt,
+      counts: {
+        items: Array.isArray(data.items) ? data.items.length : 0,
+        ships: Array.isArray(data.ships) ? data.ships.length : 0,
+        currency: Array.isArray(data.currency_exchanges) ? data.currency_exchanges.length : 0
+      }
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: String(error)
+    };
+  }
+});
+
+ipcMain.handle("wikelo:get-snapshot", async () => {
+  try {
+    const content = await fs.promises.readFile(WIKELO_SNAPSHOT_PATH, "utf8");
     return {
       ok: true,
       snapshot: JSON.parse(content)

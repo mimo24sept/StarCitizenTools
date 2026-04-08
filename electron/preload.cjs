@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld("desktopAPI", {
   runSync: () => ipcRenderer.invoke("sync:run"),
   runTradeSync: () => ipcRenderer.invoke("trade:sync"),
   getTradeSnapshot: () => ipcRenderer.invoke("trade:get-snapshot"),
+  runWikeloSync: () => ipcRenderer.invoke("wikelo:sync"),
+  getWikeloSnapshot: () => ipcRenderer.invoke("wikelo:get-snapshot"),
   resolveTradeDistances: (pairs) => ipcRenderer.invoke("trade:resolve-distances", pairs),
   runLoadoutSync: () => ipcRenderer.invoke("loadout:sync"),
   getLoadoutSnapshot: () => ipcRenderer.invoke("loadout:get-snapshot"),

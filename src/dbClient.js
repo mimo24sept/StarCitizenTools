@@ -34,6 +34,18 @@ CREATE TABLE IF NOT EXISTS tracked_resources (
   session_delta REAL DEFAULT 0,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS wikelo_recipe_progress (
+  recipe_id TEXT PRIMARY KEY,
+  tracked INTEGER NOT NULL DEFAULT 0,
+  target_crafts INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS wikelo_inventory (
+  resource_name TEXT PRIMARY KEY,
+  quantity REAL NOT NULL DEFAULT 0,
+  notes TEXT DEFAULT '',
+  updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS saved_loadouts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   ship_name TEXT NOT NULL,
@@ -466,6 +478,56 @@ export async function createDbClient() {
     await persist();
   }
 
+  function getWikeloRecipeProgress() {
+    return queryAll(
+      db,
+      `SELECT recipe_id AS recipeId, tracked, target_crafts AS targetCrafts, updated_at AS updatedAt
+       FROM wikelo_recipe_progress
+       ORDER BY updated_at DESC, recipe_id`
+    ).map((row) => ({
+      ...row,
+      tracked: Number(row.tracked) === 1,
+      targetCrafts: Number(row.targetCrafts ?? 1)
+    }));
+  }
+
+  async function saveWikeloRecipeProgress(item) {
+    db.run(
+      `INSERT INTO wikelo_recipe_progress(recipe_id, tracked, target_crafts, updated_at)
+       VALUES(?, ?, ?, ?)
+       ON CONFLICT(recipe_id) DO UPDATE SET tracked=excluded.tracked, target_crafts=excluded.target_crafts, updated_at=excluded.updated_at`,
+      [item.recipeId, item.tracked ? 1 : 0, Math.max(1, Number(item.targetCrafts || 1)), nowIso()]
+    );
+    await persist();
+  }
+
+  function getWikeloInventory() {
+    return queryAll(
+      db,
+      `SELECT resource_name AS resourceName, quantity, notes, updated_at AS updatedAt
+       FROM wikelo_inventory
+       ORDER BY resource_name`
+    ).map((row) => ({
+      ...row,
+      quantity: Number(row.quantity ?? 0)
+    }));
+  }
+
+  async function saveWikeloInventoryItem(item) {
+    db.run(
+      `INSERT INTO wikelo_inventory(resource_name, quantity, notes, updated_at)
+       VALUES(?, ?, ?, ?)
+       ON CONFLICT(resource_name) DO UPDATE SET quantity=excluded.quantity, notes=excluded.notes, updated_at=excluded.updated_at`,
+      [item.resourceName, Number(item.quantity || 0), item.notes ?? "", nowIso()]
+    );
+    await persist();
+  }
+
+  async function deleteWikeloInventoryItem(resourceName) {
+    db.run("DELETE FROM wikelo_inventory WHERE resource_name = ?", [resourceName]);
+    await persist();
+  }
+
   async function reloadFromDisk() {
     const freshBytes = await window.desktopAPI.readBytes(DB_PATH);
     db.close();
@@ -500,6 +562,11 @@ export async function createDbClient() {
     getTrackedResources,
     saveTrackedResource,
     deleteTrackedResource,
+    getWikeloRecipeProgress,
+    saveWikeloRecipeProgress,
+    getWikeloInventory,
+    saveWikeloInventoryItem,
+    deleteWikeloInventoryItem,
     reloadFromDisk
   };
 }
