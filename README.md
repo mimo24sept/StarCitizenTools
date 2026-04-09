@@ -1,146 +1,129 @@
 # Star Citizen Companion
 
-Application desktop locale pour `Star Citizen`, pensée comme un hub visuel et pratique pour :
+Companion app desktop locale pour `Star Citizen`, pensée comme un hub simple et lisible pour consulter :
 - le `crafting`
 - les `trade routes`
-- les `loadouts`
-- le suivi de ressources
+- les `recettes Wikelo`
 
-L’objectif du projet est simple : éviter les allers-retours permanents entre plusieurs sites et proposer une expérience plus lisible, plus rapide, et utilisable directement en jeu avec un overlay léger.
+L'objectif est de regrouper plusieurs outils communautaires dans une seule application locale, avec synchronisation des données puis utilisation hors ligne.
 
-## Aperçu
+## Stack
 
-Ce projet tourne en :
 - `Electron`
 - `React`
 - `Vite`
-- `SQLite / snapshots locaux`
-
-Les données restent locales une fois importées, et l’application peut ensuite être utilisée hors ligne pour la consultation.
+- `sql.js`
+- `snapshots JSON locaux`
 
 ## Modules actuels
 
 ### Crafting
-- navigation dans la base de blueprints
+- bibliothèque complète de blueprints
+- recherche et filtres
 - suivi des blueprints possédés
-- détail des matériaux par segment
-- qualité des matériaux et impact sur les stats
-- filtres mission / type / location
+- qualité des matériaux
+- aperçu des modificateurs par segment
+- détails mission/type/location quand disponibles
 
 ### Trade Routes
 - calculateur de routes à partir des données `UEX`
-- filtre par vaisseau, budget, terminal d’origine, système cible
-- sélection de commodities à privilégier
-- exclusion de commodities à éviter
-- route sélectionnée avec détail profit / prix / marge
+- filtre par vaisseau, budget, terminal d'origine, système cible
+- sélection de commodities à privilégier ou exclure
+- routes simples et circulaires
+- estimation de rentabilité
+- carte de navigation de la route
 - overlay minimal pour suivre les étapes sans alt-tab
 
-### Loadouts
-- base de notes locale pour les fittings
-- sauvegarde de presets
-- suivi des composants et de leur provenance
-
 ### Wikelo
-- suivi local de ressources rares
-- notes et progression entre sessions
+- bibliothèque complète des recettes Wikelo
+- recherche et filtres
+- suivi de progression par recette
+- inventaire local par ressource
+- génération de liste de courses
+- enrichissement `Star Citizen Wiki`
+- croisement `UEX` quand un matériau existe aussi dans leurs données
 
-## Overlay trade
+## Sources de données
 
-L’application inclut un overlay minimal pour les routes commerciales :
-- toujours au-dessus du jeu
-- déplaçable
-- redimensionnable
-- progression manuelle par étapes
+L'application s'appuie sur des sources publiques et communautaires :
 
-Le design actuel est volontairement simple :
-- une colonne de points reliés
-- une étape par point
-- progression visuelle claire
+- `SC Craft Tools` pour le crafting
+- `UEX` pour les routes commerciales, terminaux, commodities et prix
+- `SeekND/Wikelo` pour les recettes Wikelo
+- `Star Citizen Wiki` pour l'enrichissement des objets, images et informations Wikelo
 
-## Lancer le projet
+Les données sont synchronisées localement puis stockées dans le dossier `data/`.
+
+## Utilisation
 
 ### Développement
 
 ```bat
+cmd /c npm.cmd install
 cmd /c npm.cmd run start
 ```
 
-### Mode web de dev
+### Mode dev avec Vite
 
 ```bat
 cmd /c npm.cmd run dev:web
 cmd /c npm.cmd run dev
 ```
 
-## Synchroniser les données trade
+## Build Windows
 
-La page `Trade Routes` peut récupérer une snapshot locale depuis `UEX`.
-
-Les données actuellement exploitées incluent :
-- véhicules cargo
-- terminaux
-- commodities
-- prix d’achat / revente
-
-## Construire un `.exe`
-
-### Build portable Windows
+### Exécutable portable
 
 ```bat
 cmd /c npm.cmd run dist:win
 ```
 
-Le build sera généré dans :
+Le build est généré dans :
 
 ```text
 release/
 ```
 
-Le fichier cible attendu est un exécutable portable du type :
+Nom attendu :
 
 ```text
-StarCitizenCompanion-0.1.0.exe
+StarCitizenCompanion-0.2.0.exe
 ```
 
-### Build dossier non packagé
+### Dossier non packagé
 
 ```bat
 cmd /c npm.cmd run dist:dir
 ```
 
-## Release GitHub
+## GitHub Release
 
-Oui, le workflow prévu est :
+Workflow recommandé :
+
 1. construire le `.exe`
 2. pousser le code sur GitHub
 3. créer une `GitHub Release`
-4. joindre le fichier `.exe` dans les assets
+4. ajouter le `.exe` dans les assets de la release
 
-Comme ça, les gens téléchargent directement l’exécutable depuis la page `Releases`, sans avoir à installer Node, Python, ou cloner le repo.
+Le `.zip` proposé automatiquement par GitHub correspond au code source, pas au binaire Windows.
 
-## État du projet
+## État actuel
 
-Le projet est encore en évolution active.  
-La direction actuelle est :
-- une DA rétro-futuriste plus forte
-- une meilleure ergonomie générale
-- un vrai hub local Star Citizen
-- des outils plus lisibles que les dashboards techniques classiques
+Le projet est encore en évolution active.
 
-## Roadmap courte
-
-- améliorer encore la DA globale
-- raffiner la page `Trade Routes`
-- enrichir l’overlay
-- pousser les `Loadouts` vers un vrai module type Erkul
-- améliorer la couche Wikelo / ressources rares
+Priorités actuelles :
+- améliorer la stabilité visuelle de certains écrans
+- continuer à raffiner l'UX
+- enrichir encore les données Wikelo et trade
+- pousser l'aspect local/offline
 
 ## Notes
 
 - application non officielle
-- données issues de sources communautaires/publiques
-- les prix et profits peuvent varier selon l’état des serveurs et du backend du jeu
+- données issues de sources publiques et communautaires
+- certaines informations dépendent de services tiers et peuvent évoluer avec les patches
+- les profits et prix de trade restent des estimations basées sur les données disponibles
 
 ## Auteur
 
-Projet maintenu pour construire un companion app local, lisible et immersif pour la communauté `Star Citizen`.
+Projet maintenu comme companion app local et visuel pour la communauté `Star Citizen`.
