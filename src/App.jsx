@@ -88,21 +88,6 @@ export default function App() {
             </div>
           </div>
 
-          <div className="sidebar-card sidebar-sync-card">
-            <label className="control-label">Data version</label>
-            <select value={version} onChange={(event) => setVersion(event.target.value)} className="app-select">
-              {versions.map((item) => (
-                <option key={item.version} value={item.version}>
-                  {item.version}
-                </option>
-              ))}
-            </select>
-            <button className="primary-button" onClick={runSync} disabled={syncing}>
-              {syncing ? "Syncing..." : "Sync crafting data"}
-            </button>
-            <p className="sidebar-status">{syncMessage}</p>
-          </div>
-
           <div className="sidebar-group-label">Modules</div>
           <nav className="nav-list">
             {[
@@ -126,7 +111,20 @@ export default function App() {
 
         <main className="content">
           <div className="content-frame">
-            {activePage === "crafting" && <CraftingPage db={db} version={version} refreshToken={refreshToken} visual={visuals.crafting} onMutate={triggerRefresh} />}
+            {activePage === "crafting" && (
+              <CraftingPage
+                db={db}
+                version={version}
+                versions={versions}
+                syncing={syncing}
+                syncMessage={syncMessage}
+                onVersionChange={setVersion}
+                onSync={runSync}
+                refreshToken={refreshToken}
+                visual={visuals.crafting}
+                onMutate={triggerRefresh}
+              />
+            )}
             {activePage === "trade" && <TradeRoutesPage visual={visuals.trade} />}
             {activePage === "wikelo" && <WikeloPage db={db} version={version} refreshToken={refreshToken} visual={visuals.wikelo} onMutate={triggerRefresh} />}
           </div>

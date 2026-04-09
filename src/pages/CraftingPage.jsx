@@ -1,9 +1,19 @@
 import { useDeferredValue, useEffect, useState } from 'react';
-import Hero from '../components/Hero';
 import SectionCard from '../components/SectionCard';
 import { clampQuality, fmtSeconds, getIngredientQualityKey, toNumber } from '../utils/helpers';
 
-export default function CraftingPage({ db, version, refreshToken, visual, onMutate }) {
+export default function CraftingPage({
+  db,
+  version,
+  versions,
+  syncing,
+  syncMessage,
+  onVersionChange,
+  onSync,
+  refreshToken,
+  visual,
+  onMutate
+}) {
   const [categories, setCategories] = useState([]);
   const [resources, setResources] = useState([]);
   const [missionTypes, setMissionTypes] = useState([]);
@@ -127,6 +137,18 @@ export default function CraftingPage({ db, version, refreshToken, visual, onMuta
         <div className="scmdb-topbar-actions">
           <div className="scmdb-chip">VER {version}</div>
           <div className="scmdb-chip">{ownedVisibleCount} owned</div>
+          <div className="scmdb-sync-inline">
+            <select value={version} onChange={(event) => onVersionChange(event.target.value)} className="app-select scmdb-select">
+              {versions.map((item) => (
+                <option key={item.version} value={item.version}>
+                  {item.version}
+                </option>
+              ))}
+            </select>
+            <button className="primary-button small" onClick={onSync} disabled={syncing}>
+              {syncing ? "Syncing..." : "Sync crafting data"}
+            </button>
+          </div>
           <div className="scmdb-segmented">
             <button className="is-active">Tiles</button>
             <button type="button" disabled>Table</button>
@@ -139,14 +161,12 @@ export default function CraftingPage({ db, version, refreshToken, visual, onMuta
           <div className="scmdb-panel-header">FILTERS</div>
 
           <div className="filter-block">
-            <label>SEARCH</label>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} className="app-input mono-input" placeholder="Title or description..." />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} className="app-input mono-input" placeholder="Search blueprints..." aria-label="Search blueprints" />
           </div>
 
           <div className="filter-block">
-            <label>CATEGORY</label>
             <select value={category} onChange={(event) => setCategory(event.target.value)} className="app-select mono-input">
-              <option value="">All categories</option>
+              <option value="">Category</option>
               {categories.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
@@ -154,9 +174,8 @@ export default function CraftingPage({ db, version, refreshToken, visual, onMuta
           </div>
 
           <div className="filter-block">
-            <label>MATERIAL</label>
             <select value={resource} onChange={(event) => setResource(event.target.value)} className="app-select mono-input">
-              <option value="">All materials</option>
+              <option value="">Material</option>
               {resources.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
@@ -164,23 +183,20 @@ export default function CraftingPage({ db, version, refreshToken, visual, onMuta
           </div>
 
           <div className="filter-block">
-            <label>COLLECTION</label>
             <button className={`filter-toggle ${ownedOnly ? "is-active" : ""}`} onClick={() => setOwnedOnly((current) => !current)}>
               {ownedOnly ? "Owned only" : "All blueprints"}
             </button>
           </div>
 
           <div className="filter-block">
-            <label>SOURCE</label>
             <button className={`filter-toggle ${missionOnly ? "is-active" : ""}`} onClick={() => setMissionOnly((current) => !current)}>
               {missionOnly ? "Mission blueprints" : "All sources"}
             </button>
           </div>
 
           <div className="filter-block">
-            <label>MISSION TYPE</label>
             <select value={missionType} onChange={(event) => setMissionType(event.target.value)} className="app-select mono-input">
-              <option value="">All mission types</option>
+              <option value="">Mission type</option>
               {missionTypes.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
@@ -188,9 +204,8 @@ export default function CraftingPage({ db, version, refreshToken, visual, onMuta
           </div>
 
           <div className="filter-block">
-            <label>MISSION LOCATION</label>
             <select value={missionLocation} onChange={(event) => setMissionLocation(event.target.value)} className="app-select mono-input">
-              <option value="">All mission locations</option>
+              <option value="">Mission location</option>
               {missionLocations.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}

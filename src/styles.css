@@ -685,8 +685,22 @@ textarea {
 }
 
 .scmdb-topbar-actions {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  align-items: center;
+  min-width: 0;
+}
+
+.scmdb-select {
+  min-width: 210px;
+  min-height: 30px;
+  padding: 5px 10px;
+}
+
+.scmdb-sync-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .scmdb-chip {

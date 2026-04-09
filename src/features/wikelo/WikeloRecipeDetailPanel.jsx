@@ -46,12 +46,13 @@ export default function WikeloRecipeDetailPanel({
 
             <div className="wikelo-progress-toolbar">
               <div className="field-stack wikelo-target-field">
-                <span>Craft count</span>
                 <input
                   type="number"
                   min="1"
                   className="app-input mono-input"
                   value={selectedProgress?.targetCrafts ?? 1}
+                  placeholder="Craft count"
+                  aria-label="Craft count"
                   onChange={(event) =>
                     saveRecipeProgress({
                       recipeId: selectedRecipe.id,
@@ -112,12 +113,13 @@ export default function WikeloRecipeDetailPanel({
                   </span>
                 </div>
                 <div className="wikelo-ingredient-input">
-                  <label className="control-label">Have</label>
                   <input
                     type="number"
                     min="0"
                     className="app-input mono-input"
                     value={inventoryDrafts[ingredient.name] ?? String(ingredient.owned)}
+                    placeholder="Have"
+                    aria-label={`Owned quantity for ${ingredient.name}`}
                     onClick={(event) => event.stopPropagation()}
                     onChange={(event) =>
                       setInventoryDrafts((current) => ({

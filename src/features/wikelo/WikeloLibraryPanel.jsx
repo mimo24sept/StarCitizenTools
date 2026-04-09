@@ -24,17 +24,16 @@ export default function WikeloLibraryPanel({
       <div className="wikelo-library-meta">
         <div className="wikelo-filter-grid">
           <div className="field-stack">
-            <span>Search</span>
             <input
               className="app-input mono-input"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Reward, mission or ingredient..."
+              placeholder="Search recipes, rewards, materials..."
+              aria-label="Search recipes"
             />
           </div>
           <div className="field-stack">
-            <span>Category</span>
-            <select className="app-select mono-input" value={category} onChange={(event) => setCategory(event.target.value)}>
+            <select className="app-select mono-input" value={category} onChange={(event) => setCategory(event.target.value)} aria-label="Recipe category">
               {categories.map((item) => (
                 <option key={item} value={item}>
                   {item === "all" ? "All recipes" : item}
@@ -43,15 +42,13 @@ export default function WikeloLibraryPanel({
             </select>
           </div>
           <div className="field-stack">
-            <span>Status</span>
-            <select className="app-select mono-input" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <select className="app-select mono-input" value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Recipe status">
               <option value="active">Active only</option>
               <option value="retired">Retired only</option>
               <option value="all">All statuses</option>
             </select>
           </div>
           <div className="field-stack">
-            <span>Tracked</span>
             <button className={`filter-toggle ${trackedOnly ? "is-active" : ""}`} onClick={() => setTrackedOnly((value) => !value)}>
               {trackedOnly ? "Tracked only" : "All recipes"}
             </button>

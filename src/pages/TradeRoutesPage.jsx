@@ -306,15 +306,9 @@ export default function TradeRoutesPage({ visual }) {
     <div className="page-shell trade-page">
       <div className="three-column-layout trade-layout">
         <SectionCard title="Trade calculator" className="narrow-card trade-control-card">
-          <div className="trade-inline-stats">
-            <span>{enrichedResults.length} routes</span>
-            <span>Best {fmtMoney(enrichedResults[0]?.profit ?? 0)}</span>
-            <span>{form.routeMode === "circular" ? `${visibleResults[0]?.legs?.length ?? 0} leg loop` : visibleResults[0]?.commodityName ?? "-"}</span>
-          </div>
           <div className="trade-form-grid">
             <label className="field-stack">
-              <span>Route mode</span>
-              <select className="app-select" value={form.routeMode} onChange={(event) => setForm((current) => ({ ...current, routeMode: event.target.value }))}>
+              <select className="app-select" value={form.routeMode} onChange={(event) => setForm((current) => ({ ...current, routeMode: event.target.value }))} aria-label="Route mode">
                 <option value="single">Simple route</option>
                 <option value="circular">Circular route</option>
               </select>
@@ -322,8 +316,7 @@ export default function TradeRoutesPage({ visual }) {
 
             {form.routeMode === "circular" ? (
               <label className="field-stack">
-                <span>Loop legs</span>
-                <select className="app-select" value={form.loopLegCount} onChange={(event) => setForm((current) => ({ ...current, loopLegCount: toNumber(event.target.value, current.loopLegCount) }))}>
+                <select className="app-select" value={form.loopLegCount} onChange={(event) => setForm((current) => ({ ...current, loopLegCount: toNumber(event.target.value, current.loopLegCount) }))} aria-label="Loop legs">
                   <option value="3">3 legs</option>
                   <option value="4">4 legs</option>
                   <option value="5">5 legs</option>
@@ -332,13 +325,13 @@ export default function TradeRoutesPage({ visual }) {
             ) : null}
 
             <label className="field-stack">
-              <span>Ship</span>
               <input
                 className="app-input"
                 list="trade-ship-options"
                 value={form.shipId}
                 onChange={(event) => setForm((current) => ({ ...current, shipId: event.target.value }))}
-                placeholder="Type a ship name"
+                placeholder="Ship"
+                aria-label="Ship"
               />
               <datalist id="trade-ship-options">
                 {ships.map((item) => {
@@ -349,19 +342,16 @@ export default function TradeRoutesPage({ visual }) {
             </label>
 
             <label className="field-stack">
-              <span>Cargo capacity</span>
-              <input className="app-input" type="number" min="1" value={form.cargoCapacity} onChange={(event) => setForm((current) => ({ ...current, cargoCapacity: Math.max(1, toNumber(event.target.value, current.cargoCapacity)) }))} />
+              <input className="app-input" type="number" min="1" value={form.cargoCapacity} onChange={(event) => setForm((current) => ({ ...current, cargoCapacity: Math.max(1, toNumber(event.target.value, current.cargoCapacity)) }))} placeholder="Cargo capacity" aria-label="Cargo capacity" />
             </label>
 
             <label className="field-stack">
-              <span>Budget</span>
-              <input className="app-input" type="number" min="0" value={form.budget} onChange={(event) => setForm((current) => ({ ...current, budget: Math.max(0, toNumber(event.target.value, current.budget)) }))} />
+              <input className="app-input" type="number" min="0" value={form.budget} onChange={(event) => setForm((current) => ({ ...current, budget: Math.max(0, toNumber(event.target.value, current.budget)) }))} placeholder="Budget" aria-label="Budget" />
             </label>
 
             <label className="field-stack">
-              <span>Origin terminal</span>
-              <select className="app-select" value={form.originTerminalId} onChange={(event) => setForm((current) => ({ ...current, originTerminalId: event.target.value }))}>
-                <option value="">Any terminal</option>
+              <select className="app-select" value={form.originTerminalId} onChange={(event) => setForm((current) => ({ ...current, originTerminalId: event.target.value }))} aria-label="Origin terminal">
+                <option value="">Any origin terminal</option>
                 {terminals.map((item) => (
                   <option key={item.id} value={item.id}>
                     {getTerminalLabel(item)}
@@ -371,8 +361,7 @@ export default function TradeRoutesPage({ visual }) {
             </label>
 
             <label className="field-stack">
-              <span>Destination system</span>
-              <select className="app-select" value={form.destinationSystem} onChange={(event) => setForm((current) => ({ ...current, destinationSystem: event.target.value }))}>
+              <select className="app-select" value={form.destinationSystem} onChange={(event) => setForm((current) => ({ ...current, destinationSystem: event.target.value }))} aria-label="Destination system">
                 <option value="">All systems</option>
                 {systems.map((item) => (
                   <option key={item} value={item}>
@@ -383,8 +372,7 @@ export default function TradeRoutesPage({ visual }) {
             </label>
 
             <label className="field-stack">
-              <span>Legality</span>
-              <select className="app-select" value={form.legalityFilter} onChange={(event) => setForm((current) => ({ ...current, legalityFilter: event.target.value }))}>
+              <select className="app-select" value={form.legalityFilter} onChange={(event) => setForm((current) => ({ ...current, legalityFilter: event.target.value }))} aria-label="Legality">
                 <option value="all">All commodities</option>
                 <option value="legal">Legal only</option>
                 <option value="illegal">Illegal only</option>
@@ -392,8 +380,7 @@ export default function TradeRoutesPage({ visual }) {
             </label>
 
             <label className="field-stack">
-              <span>Sort routes by</span>
-              <select className="app-select" value={form.sortBy} onChange={(event) => setForm((current) => ({ ...current, sortBy: event.target.value }))}>
+              <select className="app-select" value={form.sortBy} onChange={(event) => setForm((current) => ({ ...current, sortBy: event.target.value }))} aria-label="Sort routes by">
                 <option value="profit">Total profit</option>
                 <option value="efficiency">Profit / min</option>
                 <option value="time">Fastest</option>
@@ -406,14 +393,14 @@ export default function TradeRoutesPage({ visual }) {
           <div className="trade-filter-block">
             <div className="trade-chip-editor">
               <label className="field-stack">
-                <span>Preferred commodities</span>
                 <div className="trade-chip-input-row">
                   <input
                     className="app-input"
                     list="trade-commodity-options"
                     value={preferredDraft}
                     onChange={(event) => setPreferredDraft(event.target.value)}
-                    placeholder="Type a commodity to prefer"
+                    placeholder="Prefer commodity"
+                    aria-label="Preferred commodity"
                   />
                   <button className="secondary-button" type="button" onClick={() => addCommodityFilter("includeCommodityIds")}>Add</button>
                 </div>
@@ -430,14 +417,14 @@ export default function TradeRoutesPage({ visual }) {
 
             <div className="trade-chip-editor">
               <label className="field-stack">
-                <span>Avoid commodities</span>
                 <div className="trade-chip-input-row">
                   <input
                     className="app-input"
                     list="trade-commodity-options"
                     value={avoidDraft}
                     onChange={(event) => setAvoidDraft(event.target.value)}
-                    placeholder="Type a commodity to avoid"
+                    placeholder="Avoid commodity"
+                    aria-label="Avoid commodity"
                   />
                   <button className="ghost-button" type="button" onClick={() => addCommodityFilter("excludeCommodityIds")}>Avoid</button>
                 </div>

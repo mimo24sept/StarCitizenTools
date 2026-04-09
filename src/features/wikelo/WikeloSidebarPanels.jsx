@@ -103,11 +103,11 @@ export default function WikeloSidebarPanels({
               ) : null}
 
               <div className="field-stack">
-                <span>Personal note</span>
                 <textarea
                   className="app-textarea"
                   value={noteDrafts[selectedMaterial.name] ?? selectedMaterial.notes ?? ""}
                   placeholder="Where do you usually farm this resource? bunker, cave, mission, trader..."
+                  aria-label={`Personal note for ${selectedMaterial.name}`}
                   onChange={(event) =>
                     setNoteDrafts((current) => ({
                       ...current,
