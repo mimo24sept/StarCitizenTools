@@ -7,6 +7,10 @@ export const PAGE_VISUALS = {
     { kicker: "C2 Hercules", title: "Trade Routes", subtitle: "Plan efficient cargo loops, visualize the route, and stage a clean overlay path." },
     { kicker: "Caterpillar Lane", title: "Trade Routes", subtitle: "Create routes fast, tune for budget and comfort, and keep them saved locally." }
   ],
+  mining: [
+    { kicker: "Prospector Deck", title: "Mining", subtitle: "Check ship mining setups, browse heads and modules, and figure out where each mineral is worth searching." },
+    { kicker: "Extraction Grid", title: "Mining", subtitle: "A practical mining companion for ships, rocks, minerals and sell value." }
+  ],
   wikelo: [
     { kicker: "Wikelo Intel", title: "Wikelo", subtitle: "Track rare resources, remember how to obtain them, and keep progress between sessions." },
     { kicker: "Rare Material", title: "Wikelo", subtitle: "A practical farming memory layer for the hard-to-find things you never want to lose track of." }

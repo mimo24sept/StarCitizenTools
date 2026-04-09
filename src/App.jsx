@@ -3,6 +3,7 @@ import { createDbClient } from './dbClient';
 import { PAGE_VISUALS } from './utils/constants';
 import AppState from './components/AppState';
 import CraftingPage from './pages/CraftingPage';
+import MiningPage from './pages/MiningPage';
 import TradeRoutesPage from './pages/TradeRoutesPage';
 import WikeloPage from './pages/WikeloPage';
 
@@ -24,6 +25,7 @@ export default function App() {
   const [visuals] = useState({
     crafting: randomVisual("crafting"),
     trade: randomVisual("trade"),
+    mining: randomVisual("mining"),
     wikelo: randomVisual("wikelo")
   });
 
@@ -92,6 +94,7 @@ export default function App() {
           <nav className="nav-list">
             {[
               ["crafting", "Crafting"],
+              ["mining", "Mining"],
               ["trade", "Trade Routes"],
               ["wikelo", "Wikelo"]
             ].map(([key, label], index) => (
@@ -125,6 +128,7 @@ export default function App() {
                 onMutate={triggerRefresh}
               />
             )}
+            {activePage === "mining" && <MiningPage visual={visuals.mining} />}
             {activePage === "trade" && <TradeRoutesPage visual={visuals.trade} />}
             {activePage === "wikelo" && <WikeloPage db={db} version={version} refreshToken={refreshToken} visual={visuals.wikelo} onMutate={triggerRefresh} />}
           </div>

@@ -1,6 +1,10 @@
 const fs = require("fs");
 
 const UEX_API_BASE = "https://api.uexcorp.uk/2.0";
+const WIKI_API_BASE = "https://api.star-citizen.wiki/api/v2/vehicles";
+const WIKI_HARDPOINT_FILTER = ["SeatAccess", "SeatDashboard", "Seat", "DockingAnimator", "DoorController", "Door"]
+  .map((entry) => `!${entry}`)
+  .join(",");
 
 async function fetchUexJson(endpoint) {
   const response = await fetch(`${UEX_API_BASE}/${endpoint}`);
@@ -176,6 +180,161 @@ function simplifyLoadoutPrice(item) {
   };
 }
 
+function isMiningVehicle(item) {
+  const name = String(item.name_full || item.name || "").toLowerCase();
+  return [
+    "prospector",
+    "mole",
+    "roc",
+    "roc-ds",
+    "arrastra",
+    "orion"
+  ].some((needle) => name.includes(needle));
+}
+
+function buildMiningVehicleWikiQueries(vehicle) {
+  const names = [
+    vehicle.fullName,
+    vehicle.name
+  ]
+    .filter(Boolean)
+    .map((entry) => String(entry).trim());
+
+  const simplified = names.flatMap((entry) => {
+    const parts = entry.split(" ").filter(Boolean);
+    if (parts.length <= 1) return [];
+    return [
+      parts.slice(1).join(" "),
+      parts.at(-1)
+    ];
+  });
+
+  return Array.from(new Set([...names, ...simplified].filter(Boolean)));
+}
+
+async function fetchWikiVehicleByQuery(query) {
+  const url = new URL(`${WIKI_API_BASE}/${encodeURIComponent(query)}`);
+  url.searchParams.set("locale", "en_EN");
+  url.searchParams.set("include", "hardpoints,components,parts,shops");
+  url.searchParams.set("filter[hardpoints]", WIKI_HARDPOINT_FILTER);
+
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      "user-agent": "StarCitizenCompanion/0.2.0"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Wiki vehicle ${query} failed with HTTP ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+function collectPotentialHardpoints(value, output = [], seen = new Set()) {
+  if (!value || typeof value !== "object") return output;
+  if (seen.has(value)) return output;
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    value.forEach((entry) => collectPotentialHardpoints(entry, output, seen));
+    return output;
+  }
+
+  const keys = Object.keys(value);
+  const looksLikeHardpoint = ["type", "sub_type", "class_name", "hardpoint", "item", "equipped_item"].some((key) => key in value);
+  if (looksLikeHardpoint) {
+    output.push(value);
+  }
+
+  keys.forEach((key) => collectPotentialHardpoints(value[key], output, seen));
+  return output;
+}
+
+function stringifyHardpoint(value) {
+  if (!value || typeof value !== "object") return "";
+  return [
+    value.name,
+    value.type,
+    value.sub_type,
+    value.class_name,
+    value.hardpoint,
+    value.item?.name,
+    value.equipped_item?.name
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function extractEquippedItemName(hardpoint) {
+  return hardpoint?.item?.name || hardpoint?.equipped_item?.name || "";
+}
+
+function buildMiningProfileFromWiki(vehicle, components) {
+  const hardpoints = collectPotentialHardpoints(vehicle?.hardpoints ?? []);
+  const miningHeadNodes = hardpoints.filter((entry) => {
+    const haystack = stringifyHardpoint(entry);
+    return haystack.includes("mining") && (haystack.includes("arm") || haystack.includes("laser") || haystack.includes("head"));
+  });
+
+  const equippedHeadItems = miningHeadNodes
+    .map((entry) => extractEquippedItemName(entry))
+    .filter(Boolean)
+    .map((name) => components.find((component) => component.categoryName === "Mining Laser Heads" && component.name === name))
+    .filter(Boolean);
+
+  const headSize = equippedHeadItems.find((item) => item.size)?.size || "";
+  const moduleSlots = equippedHeadItems.reduce((total, item) => {
+    const slotValue = Number(item.attributeMap?.["Module Slots"]?.value ?? 0);
+    return total + (Number.isFinite(slotValue) ? slotValue : 0);
+  }, 0);
+
+  const typeName = String(vehicle?.type || vehicle?.classification || "").toLowerCase();
+  const roleName = String(vehicle?.role || "").toLowerCase();
+  const isGround = typeName.includes("ground") || roleName.includes("ground");
+  const miningType = isGround ? "Ground gem mining" : "Ship mining";
+
+  return {
+    type: miningType,
+    headSize,
+    headCount: miningHeadNodes.length || 1,
+    moduleSlots: moduleSlots || 0
+  };
+}
+
+async function enrichMiningVehiclesWithWiki(vehicles, components) {
+  const results = await Promise.all(
+    vehicles.map(async (vehicle) => {
+      const queries = buildMiningVehicleWikiQueries(vehicle);
+      for (const query of queries) {
+        try {
+          const payload = await fetchWikiVehicleByQuery(query);
+          const data = payload?.data;
+          if (!data) continue;
+
+          return {
+            ...vehicle,
+            miningProfile: buildMiningProfileFromWiki(data, components),
+            wikiVehicle: {
+              query,
+              uuid: data.uuid || "",
+              name: data.name || query
+            }
+          };
+        } catch {
+          // Best effort only: keep UEX vehicle even if wiki enrichment fails.
+        }
+      }
+
+      return vehicle;
+    })
+  );
+
+  return results;
+}
+
 async function syncTradeSnapshot(snapshotPath) {
   const [vehiclesPayload, terminalsPayload, commoditiesPayload, pricesPayload] = await Promise.all([
     fetchUexJson("vehicles"),
@@ -296,6 +455,105 @@ async function syncLoadoutSnapshot(snapshotPath) {
   };
 }
 
+async function syncMiningSnapshot(snapshotPath) {
+  const [categoriesPayload, vehiclesPayload, terminalsPayload, pricesPayload, commoditiesPayload, commodityPricesPayload] = await Promise.all([
+    fetchUexJson("categories"),
+    fetchUexJson("vehicles"),
+    fetchUexJson("terminals"),
+    fetchUexJson("items_prices_all"),
+    fetchUexJson("commodities"),
+    fetchUexJson("commodities_prices_all")
+  ]);
+
+  const relevantCategoryNames = new Set([
+    "Mining Laser Heads",
+    "Mining Modules",
+    "Gadgets"
+  ]);
+
+  const categories = (categoriesPayload.data ?? [])
+    .filter((item) => item.type === "item" && relevantCategoryNames.has(item.name))
+    .map(simplifyLoadoutCategory);
+
+  const categoryResults = await Promise.all(
+    categories.map(async (category) => {
+      const [itemsPayload, attributesPayload] = await Promise.all([
+        fetchUexJson(`items?id_category=${category.id}`),
+        fetchUexJson(`items_attributes?id_category=${category.id}`)
+      ]);
+
+      const rawAttributes = (attributesPayload.data ?? []).map(simplifyLoadoutAttribute);
+      const attributesByItemId = new Map();
+
+      for (const attribute of rawAttributes) {
+        if (!attributesByItemId.has(attribute.itemId)) {
+          attributesByItemId.set(attribute.itemId, []);
+        }
+        attributesByItemId.get(attribute.itemId).push(attribute);
+      }
+
+      const components = (itemsPayload.data ?? []).map((item) =>
+        simplifyLoadoutComponent(item, category, attributesByItemId.get(item.id) ?? [])
+      );
+
+      return {
+        category,
+        components
+      };
+    })
+  );
+
+  const components = categoryResults.flatMap((entry) => entry.components);
+  const relevantItemIds = new Set(components.map((item) => item.id));
+  const prices = (pricesPayload.data ?? [])
+    .filter((item) => relevantItemIds.has(item.id_item) && (Number(item.price_buy ?? 0) > 0 || Number(item.price_sell ?? 0) > 0))
+    .map(simplifyLoadoutPrice);
+
+  const minerals = (commoditiesPayload.data ?? [])
+    .map(simplifyCommodity)
+    .filter((item) => item.isVisible && item.isAvailableLive && (item.isMineral || item.isRaw));
+
+  const mineralCommodityIds = new Set(minerals.map((item) => item.id));
+  const mineralPrices = (commodityPricesPayload.data ?? [])
+    .map(simplifyPrice)
+    .filter((item) => mineralCommodityIds.has(item.commodityId) && (Number(item.priceBuy ?? 0) > 0 || Number(item.priceSell ?? 0) > 0));
+
+  const vehicles = await enrichMiningVehiclesWithWiki(
+    (vehiclesPayload.data ?? [])
+      .map(simplifyVehicle)
+      .filter(isMiningVehicle),
+    components
+  );
+
+  const snapshot = {
+    source: "UEX API 2.0",
+    apiBase: UEX_API_BASE,
+    fetchedAt: new Date().toISOString(),
+    categories,
+    vehicles,
+    terminals: (terminalsPayload.data ?? []).map(simplifyTerminal),
+    components,
+    prices,
+    minerals,
+    mineralPrices
+  };
+
+  await fs.promises.writeFile(snapshotPath, JSON.stringify(snapshot), "utf8");
+
+  return {
+    ok: true,
+    fetchedAt: snapshot.fetchedAt,
+    counts: {
+      categories: snapshot.categories.length,
+      vehicles: snapshot.vehicles.length,
+      components: snapshot.components.length,
+      prices: snapshot.prices.length,
+      minerals: snapshot.minerals.length,
+      mineralPrices: snapshot.mineralPrices.length
+    }
+  };
+}
+
 function getDistanceCacheKey(originTerminalId, destinationTerminalId) {
   const left = Number(originTerminalId);
   const right = Number(destinationTerminalId);
@@ -347,5 +605,6 @@ module.exports = {
   UEX_API_BASE,
   syncTradeSnapshot,
   syncLoadoutSnapshot,
+  syncMiningSnapshot,
   resolveTerminalDistances
 };

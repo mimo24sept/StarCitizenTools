@@ -3612,6 +3612,214 @@ body {
   gap: 10px;
 }
 
+.mining-page {
+  display: grid;
+  gap: 8px;
+  min-height: calc(100vh - 16px);
+}
+
+.mining-column-card {
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mining-panel-scroll {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding-right: 4px;
+}
+
+.mining-ship-hero {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #151515;
+}
+
+.mining-ship-hero strong {
+  font-size: 1.08rem;
+}
+
+.mining-ship-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mining-ship-metrics span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(0, 215, 255, 0.22);
+  background: rgba(0, 215, 255, 0.06);
+  color: var(--accent);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.82rem;
+}
+
+.mining-ship-list,
+.mining-mineral-list,
+.mining-component-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mining-workspace {
+  grid-template-columns: minmax(310px, 360px) minmax(0, 1fr);
+  height: calc(100vh - 88px);
+  min-height: 0;
+}
+
+.mining-form-stack {
+  gap: 10px;
+}
+
+.mining-build-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mining-build-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mining-build-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.mining-build-group,
+.mining-browser-shell,
+.mining-mineral-hero {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #151515;
+}
+
+.mining-build-group-head {
+  display: grid;
+  gap: 4px;
+}
+
+.mining-build-group-head strong {
+  font-size: 0.98rem;
+}
+
+.mining-build-group-head span,
+.mining-build-item span,
+.mining-build-item-footer,
+.mining-build-item-footer span {
+  color: var(--muted);
+}
+
+.mining-build-group-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mining-build-item {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #101010;
+}
+
+.mining-build-item-head,
+.mining-build-item-pills,
+.mining-browser-toolbar,
+.mining-source-list {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.mining-build-item-head > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mining-build-item-head strong,
+.mining-component-detail .detail-title {
+  overflow-wrap: anywhere;
+}
+
+.mining-inline-stats {
+  gap: 6px;
+}
+
+.mining-inline-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #171717;
+  font-size: 0.72rem;
+}
+
+.mining-empty-card {
+  min-height: 110px;
+  align-content: center;
+}
+
+.mining-component-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.86fr) minmax(300px, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.mining-component-detail {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #151515;
+}
+
+.mining-attribute-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mining-mineral-detail {
+  display: grid;
+  gap: 10px;
+}
+
+.mining-location-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mining-primary-destination {
+  background: rgba(0, 215, 255, 0.06);
+  border-color: rgba(0, 215, 255, 0.22);
+}
+
+.mining-source-list {
+  justify-content: flex-start;
+}
+
 .wikelo-shopping-row {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -3742,6 +3950,14 @@ body {
   }
 
   .wikelo-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .mining-workspace,
+  .mining-build-grid,
+  .mining-component-layout,
+  .mining-location-grid {
     grid-template-columns: 1fr;
     height: auto;
   }

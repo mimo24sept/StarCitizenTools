@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { runSync } = require("./sync.cjs");
-const { syncTradeSnapshot, syncLoadoutSnapshot, resolveTerminalDistances } = require("./services/uex.cjs");
+const { syncTradeSnapshot, syncLoadoutSnapshot, syncMiningSnapshot, resolveTerminalDistances } = require("./services/uex.cjs");
 const { syncWikeloSnapshot } = require("./services/wikelo.cjs");
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL;
@@ -13,6 +13,7 @@ const DATA_DIR = path.join(ROOT_DIR, "data");
 
 const SNAPSHOT_PATHS = {
   trade: path.join(DATA_DIR, "trade_snapshot.json"),
+  mining: path.join(DATA_DIR, "mining_snapshot.json"),
   loadout: path.join(DATA_DIR, "loadout_snapshot.json"),
   wikelo: path.join(DATA_DIR, "wikelo_snapshot.json"),
   tradeDistanceCache: path.join(DATA_DIR, "trade_distance_cache.json")
@@ -193,6 +194,20 @@ ipcMain.handle("trade:sync", async () => {
 });
 
 ipcMain.handle("trade:get-snapshot", async () => await withSnapshotResponse(SNAPSHOT_PATHS.trade));
+
+ipcMain.handle("mining:sync", async () => {
+  try {
+    await ensureDataDir();
+    return await syncMiningSnapshot(SNAPSHOT_PATHS.mining);
+  } catch (error) {
+    return {
+      ok: false,
+      error: String(error)
+    };
+  }
+});
+
+ipcMain.handle("mining:get-snapshot", async () => await withSnapshotResponse(SNAPSHOT_PATHS.mining));
 
 ipcMain.handle("trade:resolve-distances", async (_event, pairs = []) => {
   try {
