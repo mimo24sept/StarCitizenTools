@@ -1,129 +1,203 @@
+<div align="center">
+
 # Star Citizen Companion
 
-Companion app desktop locale pour `Star Citizen`, pensée comme un hub simple et lisible pour consulter :
-- le `crafting`
-- les `trade routes`
-- les `recettes Wikelo`
+### A local desktop hub for crafting, trade routes, and Wikelo progression
 
-L'objectif est de regrouper plusieurs outils communautaires dans une seule application locale, avec synchronisation des données puis utilisation hors ligne.
+<p>
+  <img src="https://img.shields.io/badge/Windows-Portable-0b0b0b?style=for-the-badge&logo=windows&logoColor=white" alt="Windows Portable" />
+  <img src="https://img.shields.io/badge/Electron-41.x-0b0b0b?style=for-the-badge&logo=electron&logoColor=61dafb" alt="Electron" />
+  <img src="https://img.shields.io/badge/React-19.x-0b0b0b?style=for-the-badge&logo=react&logoColor=61dafb" alt="React" />
+  <img src="https://img.shields.io/badge/Vite-5.x-0b0b0b?style=for-the-badge&logo=vite&logoColor=ffd62e" alt="Vite" />
+  <img src="https://img.shields.io/badge/Data-Local%20Snapshots-0b0b0b?style=for-the-badge&logo=json&logoColor=00d7ff" alt="Local Snapshots" />
+  <img src="https://img.shields.io/badge/Version-v0.2.0-0b0b0b?style=for-the-badge&logo=github&logoColor=00d7ff" alt="Version 0.2.0" />
+</p>
 
-## Stack
+<p>
+  <img src="https://media0.giphy.com/media/2PmCBT0UGX0Zxe4nF5/100.gif" alt="Star Citizen animated banner" width="720" />
+</p>
 
-- `Electron`
-- `React`
-- `Vite`
-- `sql.js`
-- `snapshots JSON locaux`
+<p>
+  Built to keep the most useful Star Citizen tools in one local app:
+  <strong>blueprints</strong>, <strong>trade planning</strong>, and <strong>Wikelo recipes</strong>,
+  without juggling multiple tabs every session.
+</p>
 
-## Modules actuels
+</div>
 
-### Crafting
-- bibliothèque complète de blueprints
-- recherche et filtres
-- suivi des blueprints possédés
-- qualité des matériaux
-- aperçu des modificateurs par segment
-- détails mission/type/location quand disponibles
+---
 
-### Trade Routes
-- calculateur de routes à partir des données `UEX`
-- filtre par vaisseau, budget, terminal d'origine, système cible
-- sélection de commodities à privilégier ou exclure
-- routes simples et circulaires
-- estimation de rentabilité
-- carte de navigation de la route
-- overlay minimal pour suivre les étapes sans alt-tab
+## What It Does
 
-### Wikelo
-- bibliothèque complète des recettes Wikelo
-- recherche et filtres
-- suivi de progression par recette
-- inventaire local par ressource
-- génération de liste de courses
-- enrichissement `Star Citizen Wiki`
-- croisement `UEX` quand un matériau existe aussi dans leurs données
+Star Citizen Companion is a local Electron desktop app designed to turn community data into a cleaner in-game planning workflow.
 
-## Sources de données
+It focuses on three things:
 
-L'application s'appuie sur des sources publiques et communautaires :
+- `Crafting`: browse blueprints, track owned blueprints, inspect material quality, and preview stat modifiers.
+- `Trade Routes`: calculate profitable routes from local UEX snapshots, compare simple and circular loops, estimate profitability over time, and display route guidance.
+- `Wikelo`: browse recipes, track progress, build shopping lists, and enrich materials with Star Citizen Wiki and UEX data.
 
-- `SC Craft Tools` pour le crafting
-- `UEX` pour les routes commerciales, terminaux, commodities et prix
-- `SeekND/Wikelo` pour les recettes Wikelo
-- `Star Citizen Wiki` pour l'enrichissement des objets, images et informations Wikelo
+Once synchronized, the app is designed to remain usable locally.
 
-Les données sont synchronisées localement puis stockées dans le dossier `data/`.
+---
 
-## Utilisation
+## Highlights
 
-### Développement
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>Crafting</h3>
+      <ul>
+        <li>Full blueprint library</li>
+        <li>Owned blueprint tracking</li>
+        <li>Per-segment material quality</li>
+        <li>Stat modifier preview</li>
+        <li>Mission / type / location filters</li>
+      </ul>
+    </td>
+    <td width="33%" valign="top">
+      <h3>Trade Routes</h3>
+      <ul>
+        <li>UEX-based local route calculator</li>
+        <li>Simple and circular routes</li>
+        <li>Estimated profitability over time</li>
+        <li>Navigation map view</li>
+        <li>Minimal trade overlay</li>
+      </ul>
+    </td>
+    <td width="33%" valign="top">
+      <h3>Wikelo</h3>
+      <ul>
+        <li>Complete recipe browser</li>
+        <li>Tracked progression per recipe</li>
+        <li>Inventory + shopping list</li>
+        <li>Wiki-enriched material intel</li>
+        <li>UEX cross-reference when available</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+---
+
+## Built Around Local Data
+
+The app uses community and public sources, then stores synchronized data locally.
+
+### Current data sources
+
+- `SC Craft Tools` for crafting / blueprint data
+- `UEX` for terminals, commodities, prices, routes, and trade distances
+- `SeekND/Wikelo` for Wikelo recipes
+- `Star Citizen Wiki` for Wikelo enrichment, images, and item intel
+
+### Local storage
+
+Synchronized data is stored in:
+
+- `data/craft_tracker.db`
+- `data/trade_snapshot.json`
+- `data/trade_distance_cache.json`
+- `data/wikelo_snapshot.json`
+
+---
+
+## Preview Vibe
+
+<div align="center">
+  <img src="https://media1.giphy.com/media/AC0OhJdzZxak0XtFtC/100.gif" alt="Star Citizen race gif" width="360" />
+  <img src="https://media4.giphy.com/media/gOFcKkrNqKBENOPu81/200.gif" alt="Star Citizen floating gif" width="360" />
+</div>
+
+---
+
+## Running The Project
+
+### Install dependencies
 
 ```bat
 cmd /c npm.cmd install
+```
+
+### Launch the desktop app
+
+```bat
 cmd /c npm.cmd run start
 ```
 
-### Mode dev avec Vite
+### Run Vite in dev mode
 
 ```bat
 cmd /c npm.cmd run dev:web
 cmd /c npm.cmd run dev
 ```
 
-## Build Windows
+---
 
-### Exécutable portable
+## Build The Windows EXE
+
+### Portable build
 
 ```bat
 cmd /c npm.cmd run dist:win
 ```
 
-Le build est généré dans :
+Output:
 
 ```text
-release/
+release/StarCitizenCompanion-0.2.0.exe
 ```
 
-Nom attendu :
-
-```text
-StarCitizenCompanion-0.2.0.exe
-```
-
-### Dossier non packagé
+### Unpacked directory build
 
 ```bat
 cmd /c npm.cmd run dist:dir
 ```
 
-## GitHub Release
+---
 
-Workflow recommandé :
+## GitHub Release Workflow
 
-1. construire le `.exe`
-2. pousser le code sur GitHub
-3. créer une `GitHub Release`
-4. ajouter le `.exe` dans les assets de la release
+1. Build the `.exe`
+2. Push the code to GitHub
+3. Create a new GitHub Release
+4. Upload the `.exe` in the release assets
 
-Le `.zip` proposé automatiquement par GitHub correspond au code source, pas au binaire Windows.
+Important:
 
-## État actuel
+- GitHub's automatic `.zip` is the source code archive
+- the Windows executable must be uploaded manually as a release asset
 
-Le projet est encore en évolution active.
+---
 
-Priorités actuelles :
-- améliorer la stabilité visuelle de certains écrans
-- continuer à raffiner l'UX
-- enrichir encore les données Wikelo et trade
-- pousser l'aspect local/offline
+## Project Status
+
+This project is under active iteration.
+
+Current focus:
+
+- improving visual stability and layout polish
+- refining the trade route experience
+- improving the Wikelo detail view and material intelligence
+- keeping the application fully local-first after sync
+
+---
 
 ## Notes
 
-- application non officielle
-- données issues de sources publiques et communautaires
-- certaines informations dépendent de services tiers et peuvent évoluer avec les patches
-- les profits et prix de trade restent des estimations basées sur les données disponibles
+- unofficial application
+- relies on public and community-maintained sources
+- some prices, routes, and item details may change with patches
+- route profitability is still an estimate based on available data
 
-## Auteur
+---
 
-Projet maintenu comme companion app local et visuel pour la communauté `Star Citizen`.
+## Credits
+
+- `Star Citizen / RSI` for the game universe
+- `SC Craft Tools`
+- `UEX`
+- `SeekND/Wikelo`
+- `Star Citizen Wiki`
+
+Animated media in this README comes from the official `Star Citizen` GIPHY account.
