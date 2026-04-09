@@ -3341,6 +3341,7 @@ body {
   gap: 12px;
   min-height: 0;
   height: calc(100vh - 102px);
+  align-items: stretch;
 }
 
 .wikelo-layout > .section-card,
@@ -3355,14 +3356,29 @@ body {
   display: grid;
   align-content: start;
   gap: 10px;
+  min-height: 0;
 }
 
 .wikelo-library-card {
   grid-template-rows: auto auto minmax(0, 1fr);
 }
 
+.wikelo-library-meta {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-height: 0;
+  position: relative;
+  z-index: 1;
+}
+
 .wikelo-detail-card {
   grid-template-rows: minmax(0, 1fr);
+}
+
+.wikelo-detail-card .section-header {
+  min-height: 28px;
+  padding-bottom: 4px;
 }
 
 .wikelo-side-column {
@@ -3384,6 +3400,9 @@ body {
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
+  min-width: 0;
+  position: relative;
+  z-index: 0;
 }
 
 .wikelo-list-scroll,
@@ -3397,12 +3416,14 @@ body {
   display: grid;
   gap: 12px;
   align-content: start;
+  padding-top: 2px;
 }
 
 .wikelo-recipe-card,
 .wikelo-shopping-row {
   display: grid;
   gap: 8px;
+  align-content: start;
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: #171717;
@@ -3410,6 +3431,8 @@ body {
   text-align: left;
   padding: 12px;
   cursor: pointer;
+  min-width: 0;
+  overflow: visible;
 }
 
 .wikelo-recipe-card.is-selected,
@@ -3427,12 +3450,25 @@ body {
   gap: 10px;
   align-items: flex-start;
   justify-content: space-between;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .wikelo-recipe-card-head strong,
 .wikelo-shopping-row strong,
 .wikelo-ingredient-title strong {
-  line-height: 1.05;
+  display: block;
+  flex: 1 1 auto;
+  max-width: 100%;
+  line-height: 1.2;
+  padding-bottom: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wikelo-recipe-card-badges {
+  flex: 0 0 auto;
+  justify-content: flex-end;
 }
 
 .wikelo-recipe-card-meta,
@@ -3452,12 +3488,14 @@ body {
 .wikelo-source-list span {
   color: var(--muted);
   font-size: 0.86rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .wikelo-recipe-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
 }
 
@@ -3467,11 +3505,22 @@ body {
   min-width: 0;
 }
 
+.wikelo-recipe-copy .detail-title,
+.wikelo-recipe-copy .detail-subtitle {
+  overflow-wrap: anywhere;
+}
+
+.wikelo-recipe-copy .detail-title {
+  margin-top: 6px;
+  line-height: 1.08;
+}
+
 .wikelo-recipe-badges {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .wikelo-image-shell {
@@ -3479,6 +3528,8 @@ body {
   background: #111111;
   min-height: 180px;
   overflow: hidden;
+  width: min(100%, 380px);
+  justify-self: start;
 }
 
 .wikelo-image {
@@ -3550,6 +3601,38 @@ body {
 .wikelo-shopping-row {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  gap: 12px;
+}
+
+.wikelo-shopping-row > div,
+.wikelo-material-head > div,
+.source-card,
+.source-card span,
+.source-card a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wikelo-side-card .trade-inline-stats,
+.wikelo-progress-toolbar .trade-inline-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wikelo-side-card .trade-inline-stats span,
+.wikelo-progress-toolbar .trade-inline-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+.wikelo-market-grid .trade-metric-block span {
+  overflow-wrap: anywhere;
+}
+
+.wikelo-image-shell {
+  min-width: 0;
 }
 
 .wikelo-missing {

@@ -60,6 +60,7 @@ export default function WikeloPage({ db, refreshToken }) {
   const [trackedOnly, setTrackedOnly] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("No Wikelo snapshot yet.");
+  const [imageHidden, setImageHidden] = useState(false);
 
   useEffect(() => {
     if (!db) return;
@@ -169,6 +170,10 @@ export default function WikeloPage({ db, refreshToken }) {
   const materialMarket = selectedMaterial ? findCommodityMarket(selectedMaterial.name, tradeSnapshot) : null;
   const materialUsage = selectedMaterial ? wikelo?.recipeUsage?.get(selectedMaterial.name.toLowerCase()) ?? [] : [];
 
+  useEffect(() => {
+    setImageHidden(false);
+  }, [selectedRecipeId]);
+
   async function saveRecipeProgress(next) {
     await db.saveWikeloRecipeProgress(next);
     const rows = db.getWikeloRecipeProgress();
@@ -230,43 +235,45 @@ export default function WikeloPage({ db, refreshToken }) {
       ) : (
         <div className="wikelo-layout">
           <SectionCard title="Recipe library" className="wikelo-library-card">
-            <div className="wikelo-filter-grid">
-              <div className="field-stack">
-                <span>Search</span>
-                <input
-                  className="app-input mono-input"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Reward, mission or ingredient..."
-                />
+            <div className="wikelo-library-meta">
+              <div className="wikelo-filter-grid">
+                <div className="field-stack">
+                  <span>Search</span>
+                  <input
+                    className="app-input mono-input"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Reward, mission or ingredient..."
+                  />
+                </div>
+                <div className="field-stack">
+                  <span>Category</span>
+                  <select className="app-select mono-input" value={category} onChange={(event) => setCategory(event.target.value)}>
+                    {categories.map((item) => (
+                      <option key={item} value={item}>
+                        {item === "all" ? "All recipes" : item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field-stack">
+                  <span>Status</span>
+                  <select className="app-select mono-input" value={status} onChange={(event) => setStatus(event.target.value)}>
+                    <option value="active">Active only</option>
+                    <option value="retired">Retired only</option>
+                    <option value="all">All statuses</option>
+                  </select>
+                </div>
+                <div className="field-stack">
+                  <span>Tracked</span>
+                  <button className={`filter-toggle ${trackedOnly ? "is-active" : ""}`} onClick={() => setTrackedOnly((value) => !value)}>
+                    {trackedOnly ? "Tracked only" : "All recipes"}
+                  </button>
+                </div>
               </div>
-              <div className="field-stack">
-                <span>Category</span>
-                <select className="app-select mono-input" value={category} onChange={(event) => setCategory(event.target.value)}>
-                  {categories.map((item) => (
-                    <option key={item} value={item}>
-                      {item === "all" ? "All recipes" : item}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field-stack">
-                <span>Status</span>
-                <select className="app-select mono-input" value={status} onChange={(event) => setStatus(event.target.value)}>
-                  <option value="active">Active only</option>
-                  <option value="retired">Retired only</option>
-                  <option value="all">All statuses</option>
-                </select>
-              </div>
-              <div className="field-stack">
-                <span>Tracked</span>
-                <button className={`filter-toggle ${trackedOnly ? "is-active" : ""}`} onClick={() => setTrackedOnly((value) => !value)}>
-                  {trackedOnly ? "Tracked only" : "All recipes"}
-                </button>
-              </div>
-            </div>
 
-            <div className="summary-copy">{syncMessage}</div>
+              <div className="summary-copy">{syncMessage}</div>
+            </div>
 
             <div className="wikelo-list-scroll">
               {filteredRecipes.map((recipe) => {
@@ -358,9 +365,14 @@ export default function WikeloPage({ db, refreshToken }) {
                     </div>
                   </div>
 
-                  {selectedRecipe.imageUrl ? (
+                  {selectedRecipe.imageUrl && !imageHidden ? (
                     <div className="wikelo-image-shell">
-                      <img className="wikelo-image" src={selectedRecipe.imageUrl} alt={selectedRecipe.reward || selectedRecipe.title} />
+                      <img
+                        className="wikelo-image"
+                        src={selectedRecipe.imageUrl}
+                        alt={selectedRecipe.reward || selectedRecipe.title}
+                        onError={() => setImageHidden(true)}
+                      />
                     </div>
                   ) : null}
                 </div>
@@ -405,30 +417,35 @@ export default function WikeloPage({ db, refreshToken }) {
                   })}
                 </div>
 
-                <div className="wikelo-detail-grid">
-                  <div className="source-card">
-                    <strong>Mission / exchange intel</strong>
-                    <span>{selectedRecipe.notes || "No extra mission note in the current dataset."}</span>
-                    {selectedRecipe.sources.length ? (
-                      <div className="wikelo-source-list">
-                        {selectedRecipe.sources.map((item) => (
-                          <span key={item}>{item}</span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="empty-text">No dedicated source lines in the Wikelo dataset for this recipe.</span>
-                    )}
-                  </div>
+                  <div className="wikelo-detail-grid">
+                    <div className="source-card">
+                      <strong>Mission / exchange intel</strong>
+                      <span>{selectedRecipe.notes || selectedRecipe.wiki?.extract || "No extra mission note in the current dataset."}</span>
+                      {selectedRecipe.sources.length ? (
+                        <div className="wikelo-source-list">
+                          {selectedRecipe.sources.map((item) => (
+                            <span key={item}>{item}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="empty-text">No dedicated source lines in the Wikelo dataset for this recipe.</span>
+                      )}
+                    </div>
 
-                  <div className="source-card">
-                    <strong>Recipe meta</strong>
-                    <span>Reputation required: {selectedRecipe.reputationRequired || 0}</span>
-                    <span>Reputation reward: {selectedRecipe.reputationReward || 0}</span>
-                    {selectedRecipe.componentsSummary ? <span>{selectedRecipe.componentsSummary}</span> : null}
-                    {selectedRecipe.otherComponents ? <span>{selectedRecipe.otherComponents}</span> : null}
-                    {selectedRecipe.links.length ? (
-                      <div className="wikelo-link-list">
-                        {selectedRecipe.links.map((link) => (
+                    <div className="source-card">
+                      <strong>Recipe meta</strong>
+                      <span>Reputation required: {selectedRecipe.reputationRequired || 0}</span>
+                      <span>Reputation reward: {selectedRecipe.reputationReward || 0}</span>
+                      {selectedRecipe.componentsSummary ? <span>{selectedRecipe.componentsSummary}</span> : null}
+                      {selectedRecipe.otherComponents ? <span>{selectedRecipe.otherComponents}</span> : null}
+                      {selectedRecipe.wiki?.url ? (
+                        <a href={selectedRecipe.wiki.url} target="_blank" rel="noreferrer">
+                          Open wiki page
+                        </a>
+                      ) : null}
+                      {selectedRecipe.links.length ? (
+                        <div className="wikelo-link-list">
+                          {selectedRecipe.links.map((link) => (
                           <a key={link.url || link.title} href={link.url} target="_blank" rel="noreferrer">
                             {link.title || link.url}
                           </a>
@@ -492,8 +509,9 @@ export default function WikeloPage({ db, refreshToken }) {
 
                     {ingredientInfo?.location || ingredientInfo?.link_url ? (
                       <div className="source-card">
-                        <strong>Datamined source</strong>
+                        <strong>Where to get it</strong>
                         {ingredientInfo.location ? <span>{ingredientInfo.location}</span> : null}
+                        {ingredientInfo.description ? <span>{ingredientInfo.description}</span> : null}
                         {ingredientInfo.link_url ? (
                           <a href={ingredientInfo.link_url} target="_blank" rel="noreferrer">
                             {ingredientInfo.link_title || ingredientInfo.link_url}
@@ -502,7 +520,7 @@ export default function WikeloPage({ db, refreshToken }) {
                       </div>
                     ) : (
                       <div className="source-card">
-                        <strong>Recipe hints</strong>
+                        <strong>Where to get it</strong>
                         <span>
                           {selectedRecipe?.sources?.length
                             ? selectedRecipe.sources.join(" · ")

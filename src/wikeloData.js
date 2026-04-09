@@ -43,6 +43,9 @@ export function parseRecipe(recipeText) {
 
 function normalizeRecipe(entry, kind, categoryOverride = "") {
   const ingredients = parseRecipe(entry.recipe);
+  const imageUrl = entry.image_url
+    ? (String(entry.image_url).startsWith("http") ? entry.image_url : `${WIKELO_IMAGE_BASE}${entry.image_url}`)
+    : entry.wiki?.imageUrl || "";
   return {
     id: entry.id || `${kind}:${entry.mission_name || entry.name || entry.reward}`,
     kind,
@@ -61,7 +64,8 @@ function normalizeRecipe(entry, kind, categoryOverride = "") {
     sources: parseDelimitedList(entry.sources),
     notes: entry.notes || "",
     links: normalizeLinks(entry.further_reading),
-    imageUrl: entry.image_url ? `${WIKELO_IMAGE_BASE}${entry.image_url}` : "",
+    imageUrl,
+    wiki: entry.wiki ?? null,
     componentsSummary: entry.components_summary || "",
     otherComponents: entry.other_components || "",
     components: toArray(entry.components)
