@@ -1,443 +1,31 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const fs = require("fs");
 const path = require("path");
-const { spawn } = require("child_process");
 const { runSync } = require("./sync.cjs");
+const { syncTradeSnapshot, syncLoadoutSnapshot, resolveTerminalDistances } = require("./services/uex.cjs");
+const { syncWikeloSnapshot } = require("./services/wikelo.cjs");
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL;
 const isDev = Boolean(devServerUrl);
+
 const ROOT_DIR = path.join(__dirname, "..");
 const DATA_DIR = path.join(ROOT_DIR, "data");
-const TRADE_SNAPSHOT_PATH = path.join(DATA_DIR, "trade_snapshot.json");
-const LOADOUT_SNAPSHOT_PATH = path.join(DATA_DIR, "loadout_snapshot.json");
-const WIKELO_SNAPSHOT_PATH = path.join(DATA_DIR, "wikelo_snapshot.json");
-const TRADE_DISTANCE_CACHE_PATH = path.join(DATA_DIR, "trade_distance_cache.json");
-const UEX_API_BASE = "https://api.uexcorp.uk/2.0";
-const WIKELO_DATA_URL = "https://raw.githubusercontent.com/SeekND/Wikelo/main/data/wikelo_data.json";
-const WIKELO_REPO_BASE = "https://raw.githubusercontent.com/SeekND/Wikelo/main/";
-const WIKI_API_BASE = "https://starcitizen.tools/api.php";
+
+const SNAPSHOT_PATHS = {
+  trade: path.join(DATA_DIR, "trade_snapshot.json"),
+  loadout: path.join(DATA_DIR, "loadout_snapshot.json"),
+  wikelo: path.join(DATA_DIR, "wikelo_snapshot.json"),
+  tradeDistanceCache: path.join(DATA_DIR, "trade_distance_cache.json")
+};
+
 let mainWindow = null;
 let overlayWindow = null;
+
 const overlayState = {
   visible: false,
   progressIndex: 0,
   route: null
 };
-
-async function fetchJson(endpoint) {
-  const response = await fetch(`${UEX_API_BASE}/${endpoint}`);
-  if (!response.ok) {
-    throw new Error(`UEX ${endpoint} failed with HTTP ${response.status}`);
-  }
-  return await response.json();
-}
-
-async function fetchWikiSummary(searchTerm) {
-  const url = new URL(WIKI_API_BASE);
-  url.searchParams.set("action", "query");
-  url.searchParams.set("generator", "prefixsearch");
-  url.searchParams.set("gpssearch", searchTerm);
-  url.searchParams.set("gpslimit", "1");
-  url.searchParams.set("prop", "pageimages|extracts|description|info");
-  url.searchParams.set("inprop", "url");
-  url.searchParams.set("piprop", "thumbnail");
-  url.searchParams.set("pithumbsize", "800");
-  url.searchParams.set("exintro", "1");
-  url.searchParams.set("explaintext", "1");
-  url.searchParams.set("format", "json");
-  url.searchParams.set("origin", "*");
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Wiki search failed for ${searchTerm} with HTTP ${response.status}`);
-  }
-  const payload = await response.json();
-  const pages = Object.values(payload?.query?.pages ?? {});
-  const page = pages[0];
-  if (!page) return null;
-
-  return {
-    title: page.title || searchTerm,
-    url: page.fullurl || page.canonicalurl || "",
-    extract: page.extract || "",
-    description: page.description || "",
-    imageUrl: page.thumbnail?.source || ""
-  };
-}
-
-async function fetchWikiSummaryByTitle(title) {
-  const cleanTitle = sanitizeWikeloSearchTerm(title);
-  if (!cleanTitle) return null;
-
-  const url = new URL(WIKI_API_BASE);
-  url.searchParams.set("action", "query");
-  url.searchParams.set("titles", cleanTitle);
-  url.searchParams.set("prop", "pageimages|extracts|description|info");
-  url.searchParams.set("inprop", "url");
-  url.searchParams.set("piprop", "thumbnail");
-  url.searchParams.set("pithumbsize", "800");
-  url.searchParams.set("exintro", "1");
-  url.searchParams.set("explaintext", "1");
-  url.searchParams.set("format", "json");
-  url.searchParams.set("origin", "*");
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Wiki title lookup failed for ${cleanTitle} with HTTP ${response.status}`);
-  }
-  const payload = await response.json();
-  const pages = Object.values(payload?.query?.pages ?? {});
-  const page = pages.find((candidate) => !candidate.missing && Number(candidate.pageid) > 0);
-  if (!page) return null;
-
-  return {
-    title: page.title || cleanTitle,
-    url: page.fullurl || page.canonicalurl || "",
-    extract: page.extract || "",
-    description: page.description || "",
-    imageUrl: page.thumbnail?.source || ""
-  };
-}
-
-async function fetchWikiSearchTitles(searchTerm) {
-  const cleanTerm = sanitizeWikeloSearchTerm(searchTerm);
-  if (!cleanTerm) return [];
-
-  const url = new URL(WIKI_API_BASE);
-  url.searchParams.set("action", "query");
-  url.searchParams.set("list", "search");
-  url.searchParams.set("srsearch", cleanTerm);
-  url.searchParams.set("srlimit", "5");
-  url.searchParams.set("format", "json");
-  url.searchParams.set("origin", "*");
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Wiki search failed for ${cleanTerm} with HTTP ${response.status}`);
-  }
-  const payload = await response.json();
-  return (payload?.query?.search ?? []).map((entry) => entry.title).filter(Boolean);
-}
-
-function sanitizeWikeloSearchTerm(value) {
-  return String(value ?? "").replace(/\s+/g, " ").trim();
-}
-
-function buildSearchVariants(value) {
-  const base = sanitizeWikeloSearchTerm(value);
-  const noParens = base.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+/g, " ").trim();
-  const firstChunk = base.split(";")[0]?.trim() || "";
-  const noQuotes = noParens.replace(/["']/g, "").trim();
-  const noCountPrefix = noQuotes.replace(/^\d+x\s+/i, "").trim();
-  const noTrailingSlot = noCountPrefix.replace(/\b(Core|Helmet|Legs|Arms|Backpack)\b$/i, "").trim();
-  const afterHyphen = noCountPrefix.includes("-") ? noCountPrefix.split("-").pop().trim() : "";
-  const variants = [base, noParens, firstChunk, noQuotes, noCountPrefix, noTrailingSlot, afterHyphen];
-  return Array.from(new Set(variants.filter(Boolean)));
-}
-
-async function mapWithConcurrency(items, limit, mapper) {
-  const results = new Array(items.length);
-  let index = 0;
-
-  async function worker() {
-    while (index < items.length) {
-      const current = index++;
-      results[current] = await mapper(items[current], current);
-    }
-  }
-
-  const workers = Array.from({ length: Math.max(1, limit) }, () => worker());
-  await Promise.all(workers);
-  return results;
-}
-
-async function enrichWikeloData(data) {
-  const wikiCache = new Map();
-
-  async function resolveWikiEntry(searchTerms) {
-    for (const rawTerm of searchTerms) {
-      for (const term of buildSearchVariants(rawTerm)) {
-        if (!term) continue;
-        if (wikiCache.has(term)) {
-          const cached = wikiCache.get(term);
-          if (cached) return cached;
-          continue;
-        }
-
-        try {
-          const exact = await fetchWikiSummaryByTitle(term);
-          if (exact) {
-            wikiCache.set(term, exact);
-            return exact;
-          }
-
-          const summary = await fetchWikiSummary(term);
-          if (summary) {
-            wikiCache.set(term, summary);
-            return summary;
-          }
-
-          const searchTitles = await fetchWikiSearchTitles(term);
-          for (const title of searchTitles) {
-            const candidate = await fetchWikiSummaryByTitle(title);
-            if (candidate) {
-              wikiCache.set(term, candidate);
-              return candidate;
-            }
-          }
-
-          wikiCache.set(term, null);
-        } catch {
-          wikiCache.set(term, null);
-        }
-      }
-    }
-    return null;
-  }
-
-  const recipeBuckets = [
-    ...(Array.isArray(data.items) ? data.items : []),
-    ...(Array.isArray(data.ships) ? data.ships : []),
-    ...(Array.isArray(data.currency_exchanges) ? data.currency_exchanges : []),
-    ...(data.intro_mission ? [data.intro_mission] : [])
-  ];
-
-  await mapWithConcurrency(recipeBuckets, 6, async (entry) => {
-    const wiki = await resolveWikiEntry([
-      entry.mission_name,
-      entry.reward,
-      entry.name,
-      ...String(entry.reward || "").split(";").map((part) => part.trim()),
-      ...String(entry.name || "").split(";").map((part) => part.trim())
-    ]);
-    if (wiki) {
-      entry.wiki = wiki;
-      if (!entry.image_url && wiki.imageUrl) {
-        entry.image_url = wiki.imageUrl;
-      } else if (entry.image_url && !String(entry.image_url).startsWith("http")) {
-        entry.image_url = `${WIKELO_REPO_BASE}${entry.image_url}`;
-      }
-    } else if (entry.image_url && !String(entry.image_url).startsWith("http")) {
-      entry.image_url = `${WIKELO_REPO_BASE}${entry.image_url}`;
-    }
-  });
-
-  const ingredientNames = new Set();
-  for (const entry of recipeBuckets) {
-    for (const part of String(entry.recipe || "").split(";")) {
-      const match = part.trim().match(/^(\d+)x\s+(.+)$/i);
-      const name = match ? match[2].trim() : part.trim();
-      if (name) ingredientNames.add(name);
-    }
-  }
-
-  if (!data.ingredients_info || typeof data.ingredients_info !== "object") {
-    data.ingredients_info = {};
-  }
-
-  await mapWithConcurrency(Array.from(ingredientNames), 6, async (name) => {
-    const wiki = await resolveWikiEntry(buildSearchVariants(name));
-    if (!wiki) return;
-    data.ingredients_info[name] = {
-      ...(data.ingredients_info[name] || {}),
-      location: data.ingredients_info[name]?.location || wiki.extract || "",
-      link_url: data.ingredients_info[name]?.link_url || wiki.url || "",
-      link_title: data.ingredients_info[name]?.link_title || wiki.title || "",
-      description: wiki.description || "",
-      image_url: wiki.imageUrl || ""
-    };
-  });
-
-  return data;
-}
-
-async function readJsonFile(filePath, fallback) {
-  try {
-    const content = await fs.promises.readFile(filePath, "utf8");
-    return JSON.parse(content);
-  } catch {
-    return fallback;
-  }
-}
-
-function getDistanceCacheKey(originTerminalId, destinationTerminalId) {
-  const left = Number(originTerminalId);
-  const right = Number(destinationTerminalId);
-  if (!left || !right) return "";
-  return left < right ? `${left}:${right}` : `${right}:${left}`;
-}
-
-async function fetchTerminalDistance(originTerminalId, destinationTerminalId) {
-  const payload = await fetchJson(`terminals_distances?id_terminal_origin=${originTerminalId}&id_terminal_destination=${destinationTerminalId}`);
-  const distance = Number(payload?.data?.distance);
-  return Number.isFinite(distance) && distance > 0 ? distance : null;
-}
-
-function simplifyVehicle(item) {
-  return {
-    id: item.id,
-    name: item.name,
-    fullName: item.name_full,
-    manufacturer: item.company_name,
-    scu: Number(item.scu ?? 0),
-    crew: item.crew,
-    length: Number(item.length ?? 0),
-    width: Number(item.width ?? 0),
-    height: Number(item.height ?? 0),
-    padType: item.pad_type ?? "",
-    containerSizes: item.container_sizes ?? "",
-    isCargo: Number(item.is_cargo ?? 0) === 1,
-    isSpaceship: Number(item.is_spaceship ?? 0) === 1,
-    isGroundVehicle: Number(item.is_ground_vehicle ?? 0) === 1,
-    isIndustrial: Number(item.is_industrial ?? 0) === 1,
-    isStarter: Number(item.is_starter ?? 0) === 1,
-    isQuantumCapable: Number(item.is_quantum_capable ?? 0) === 1,
-    photoUrl: item.url_photo ?? ""
-  };
-}
-
-function simplifyTerminal(item) {
-  return {
-    id: item.id,
-    name: item.name,
-    nickname: item.nickname,
-    displayName: item.displayname,
-    code: item.code,
-    type: item.type,
-    starSystem: item.star_system_name,
-    planet: item.planet_name,
-    orbit: item.orbit_name,
-    moon: item.moon_name,
-    station: item.space_station_name,
-    outpost: item.outpost_name,
-    city: item.city_name,
-    faction: item.faction_name,
-    company: item.company_name,
-    maxContainerSize: Number(item.max_container_size ?? 0),
-    isVisible: Number(item.is_visible ?? 0) === 1,
-    isAvailableLive: Number(item.is_available_live ?? 0) === 1,
-    isAutoLoad: Number(item.is_auto_load ?? 0) === 1,
-    hasDockingPort: Number(item.has_docking_port ?? 0) === 1,
-    hasLoadingDock: Number(item.has_loading_dock ?? 0) === 1,
-    hasFreightElevator: Number(item.has_freight_elevator ?? 0) === 1,
-    screenshot: item.screenshot ?? null
-  };
-}
-
-function simplifyCommodity(item) {
-  return {
-    id: item.id,
-    name: item.name,
-    code: item.code,
-    kind: item.kind,
-    weightScu: Number(item.weight_scu ?? 0),
-    priceBuy: Number(item.price_buy ?? 0),
-    priceSell: Number(item.price_sell ?? 0),
-    isAvailableLive: Number(item.is_available_live ?? 0) === 1,
-    isVisible: Number(item.is_visible ?? 0) === 1,
-    isBuyable: Number(item.is_buyable ?? 0) === 1,
-    isSellable: Number(item.is_sellable ?? 0) === 1,
-    isIllegal: Number(item.is_illegal ?? 0) === 1,
-    isRaw: Number(item.is_raw ?? 0) === 1,
-    isMineral: Number(item.is_mineral ?? 0) === 1,
-    isFuel: Number(item.is_fuel ?? 0) === 1,
-    isTemporary: Number(item.is_temporary ?? 0) === 1,
-    wiki: item.wiki ?? ""
-  };
-}
-
-function simplifyPrice(item) {
-  return {
-    id: item.id,
-    commodityId: item.id_commodity,
-    terminalId: item.id_terminal,
-    commodityName: item.commodity_name,
-    terminalName: item.terminal_name,
-    priceBuy: Number(item.price_buy ?? 0),
-    priceBuyAvg: Number(item.price_buy_avg ?? 0),
-    priceSell: Number(item.price_sell ?? 0),
-    priceSellAvg: Number(item.price_sell_avg ?? 0),
-    scuBuy: Number(item.scu_buy ?? 0),
-    scuBuyAvg: Number(item.scu_buy_avg ?? 0),
-    scuSellStock: Number(item.scu_sell_stock ?? 0),
-    scuSellStockAvg: Number(item.scu_sell_stock_avg ?? 0),
-    scuSell: Number(item.scu_sell ?? 0),
-    scuSellAvg: Number(item.scu_sell_avg ?? 0),
-    statusBuy: Number(item.status_buy ?? 0),
-    statusSell: Number(item.status_sell ?? 0),
-    containerSizes: item.container_sizes ?? "",
-    modifiedAt: Number(item.date_modified ?? 0)
-  };
-}
-
-function simplifyLoadoutCategory(item) {
-  return {
-    id: item.id,
-    type: item.type,
-    section: item.section,
-    name: item.name
-  };
-}
-
-function simplifyLoadoutAttribute(item) {
-  return {
-    itemId: item.id_item,
-    itemUuid: item.item_uuid ?? "",
-    categoryId: item.id_category,
-    attributeName: item.attribute_name,
-    value: item.value,
-    unit: item.unit ?? ""
-  };
-}
-
-function simplifyLoadoutComponent(item, category, attributes = []) {
-  const attributeMap = Object.fromEntries(
-    attributes.map((attribute) => [
-      attribute.attributeName,
-      {
-        value: attribute.value,
-        unit: attribute.unit ?? ""
-      }
-    ])
-  );
-
-  const size = String(item.size || attributeMap["Size"]?.value || "").trim();
-  return {
-    id: item.id,
-    uuid: item.uuid ?? "",
-    vehicleId: Number(item.id_vehicle ?? 0),
-    vehicleName: item.vehicle_name ?? "",
-    categoryId: category.id,
-    categoryName: category.name,
-    section: category.section,
-    manufacturer: item.company_name ?? "",
-    name: item.name,
-    slug: item.slug,
-    size,
-    typeLabel: String(attributeMap["Item Type"]?.value || category.name),
-    classLabel: String(attributeMap["Class"]?.value || ""),
-    grade: String(attributeMap["Grade"]?.value || ""),
-    screenshot: item.screenshot || "",
-    storeUrl: item.url_store || "",
-    attributes,
-    attributeMap
-  };
-}
-
-function simplifyLoadoutPrice(item) {
-  return {
-    id: item.id,
-    itemId: item.id_item,
-    categoryId: item.id_category,
-    terminalId: item.id_terminal,
-    priceBuy: Number(item.price_buy ?? 0),
-    priceSell: Number(item.price_sell ?? 0),
-    modifiedAt: Number(item.date_modified ?? 0),
-    itemName: item.item_name,
-    itemUuid: item.item_uuid ?? "",
-    terminalName: item.terminal_name
-  };
-}
 
 function getOverlayPayload() {
   return {
@@ -448,11 +36,35 @@ function getOverlayPayload() {
 }
 
 function broadcastOverlayState() {
+  const payload = getOverlayPayload();
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("overlay:state", getOverlayPayload());
+    mainWindow.webContents.send("overlay:state", payload);
   }
   if (overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.webContents.send("overlay:render", getOverlayPayload());
+    overlayWindow.webContents.send("overlay:render", payload);
+  }
+}
+
+async function ensureDataDir() {
+  await fs.promises.mkdir(DATA_DIR, { recursive: true });
+}
+
+async function readSnapshot(snapshotPath) {
+  const content = await fs.promises.readFile(snapshotPath, "utf8");
+  return JSON.parse(content);
+}
+
+async function withSnapshotResponse(snapshotPath) {
+  try {
+    return {
+      ok: true,
+      snapshot: await readSnapshot(snapshotPath)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: String(error)
+    };
   }
 }
 
@@ -529,18 +141,15 @@ function createOverlayWindow() {
   return overlayWindow;
 }
 
-ipcMain.handle("app:get-meta", async () => {
-  return {
-    isDev,
-    rootDir: ROOT_DIR,
-    dataDir: DATA_DIR
-  };
-});
+ipcMain.handle("app:get-meta", async () => ({
+  isDev,
+  rootDir: ROOT_DIR,
+  dataDir: DATA_DIR
+}));
 
 ipcMain.handle("fs:read-bytes", async (_event, relativePath) => {
   const fullPath = path.join(ROOT_DIR, relativePath);
-  const buffer = await fs.promises.readFile(fullPath);
-  return buffer;
+  return await fs.promises.readFile(fullPath);
 });
 
 ipcMain.handle("fs:write-bytes", async (_event, relativePath, arrayBuffer) => {
@@ -552,18 +161,20 @@ ipcMain.handle("fs:write-bytes", async (_event, relativePath, arrayBuffer) => {
 
 ipcMain.handle("sync:run", async () => {
   try {
-    const result = await runSync(DATA_DIR, (msg) => {
-      console.log("[Sync]", msg);
+    const result = await runSync(DATA_DIR, (message) => {
+      console.log("[Sync]", message);
     });
-    if (result.ok) {
-      return { 
-        ok: true, 
-        code: 0, 
-        stdout: `Synchronisation terminee pour ${result.version}: ${result.imported} blueprints locaux, dernier ID scanne ${result.lastId}.`, 
-        stderr: "" 
-      };
+
+    if (!result.ok) {
+      return { ok: false, code: -1, stdout: "", stderr: result.error || "Unknown error" };
     }
-    return { ok: false, code: -1, stdout: "", stderr: result.error || "Unknown error" };
+
+    return {
+      ok: true,
+      code: 0,
+      stdout: `Synchronisation terminee pour ${result.version}: ${result.imported} blueprints locaux, dernier ID scanne ${result.lastId}.`,
+      stderr: ""
+    };
   } catch (error) {
     return { ok: false, code: -1, stdout: "", stderr: String(error) };
   }
@@ -571,36 +182,8 @@ ipcMain.handle("sync:run", async () => {
 
 ipcMain.handle("trade:sync", async () => {
   try {
-    const [vehiclesPayload, terminalsPayload, commoditiesPayload, pricesPayload] = await Promise.all([
-      fetchJson("vehicles"),
-      fetchJson("terminals"),
-      fetchJson("commodities"),
-      fetchJson("commodities_prices_all")
-    ]);
-
-    const snapshot = {
-      source: "UEX API 2.0",
-      apiBase: UEX_API_BASE,
-      fetchedAt: new Date().toISOString(),
-      vehicles: (vehiclesPayload.data ?? []).map(simplifyVehicle),
-      terminals: (terminalsPayload.data ?? []).map(simplifyTerminal),
-      commodities: (commoditiesPayload.data ?? []).map(simplifyCommodity),
-      prices: (pricesPayload.data ?? []).map(simplifyPrice)
-    };
-
-    await fs.promises.mkdir(DATA_DIR, { recursive: true });
-    await fs.promises.writeFile(TRADE_SNAPSHOT_PATH, JSON.stringify(snapshot), "utf8");
-
-    return {
-      ok: true,
-      fetchedAt: snapshot.fetchedAt,
-      counts: {
-        vehicles: snapshot.vehicles.length,
-        terminals: snapshot.terminals.length,
-        commodities: snapshot.commodities.length,
-        prices: snapshot.prices.length
-      }
-    };
+    await ensureDataDir();
+    return await syncTradeSnapshot(SNAPSHOT_PATHS.trade);
   } catch (error) {
     return {
       ok: false,
@@ -609,13 +192,12 @@ ipcMain.handle("trade:sync", async () => {
   }
 });
 
-ipcMain.handle("trade:get-snapshot", async () => {
+ipcMain.handle("trade:get-snapshot", async () => await withSnapshotResponse(SNAPSHOT_PATHS.trade));
+
+ipcMain.handle("trade:resolve-distances", async (_event, pairs = []) => {
   try {
-    const content = await fs.promises.readFile(TRADE_SNAPSHOT_PATH, "utf8");
-    return {
-      ok: true,
-      snapshot: JSON.parse(content)
-    };
+    await ensureDataDir();
+    return await resolveTerminalDistances(SNAPSHOT_PATHS.tradeDistanceCache, pairs);
   } catch (error) {
     return {
       ok: false,
@@ -626,32 +208,8 @@ ipcMain.handle("trade:get-snapshot", async () => {
 
 ipcMain.handle("wikelo:sync", async () => {
   try {
-    const response = await fetch(WIKELO_DATA_URL);
-    if (!response.ok) {
-      throw new Error(`Wikelo sync failed with HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    await enrichWikeloData(data);
-    const snapshot = {
-      source: "SeekND/Wikelo",
-      repo: "https://github.com/SeekND/Wikelo",
-      fetchedAt: new Date().toISOString(),
-      data
-    };
-
-    await fs.promises.mkdir(DATA_DIR, { recursive: true });
-    await fs.promises.writeFile(WIKELO_SNAPSHOT_PATH, JSON.stringify(snapshot), "utf8");
-
-    return {
-      ok: true,
-      fetchedAt: snapshot.fetchedAt,
-      counts: {
-        items: Array.isArray(data.items) ? data.items.length : 0,
-        ships: Array.isArray(data.ships) ? data.ships.length : 0,
-        currency: Array.isArray(data.currency_exchanges) ? data.currency_exchanges.length : 0
-      }
-    };
+    await ensureDataDir();
+    return await syncWikeloSnapshot(SNAPSHOT_PATHS.wikelo);
   } catch (error) {
     return {
       ok: false,
@@ -660,109 +218,12 @@ ipcMain.handle("wikelo:sync", async () => {
   }
 });
 
-ipcMain.handle("wikelo:get-snapshot", async () => {
-  try {
-    const content = await fs.promises.readFile(WIKELO_SNAPSHOT_PATH, "utf8");
-    return {
-      ok: true,
-      snapshot: JSON.parse(content)
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error: String(error)
-    };
-  }
-});
+ipcMain.handle("wikelo:get-snapshot", async () => await withSnapshotResponse(SNAPSHOT_PATHS.wikelo));
 
 ipcMain.handle("loadout:sync", async () => {
   try {
-    const [categoriesPayload, vehiclesPayload, terminalsPayload, pricesPayload] = await Promise.all([
-      fetchJson("categories"),
-      fetchJson("vehicles"),
-      fetchJson("terminals"),
-      fetchJson("items_prices_all")
-    ]);
-
-    const relevantCategoryNames = new Set([
-      "Coolers",
-      "Power Plants",
-      "Quantum Drives",
-      "Shield Generators",
-      "Guns",
-      "Missile Racks",
-      "Missiles",
-      "Turrets",
-      "Bombs",
-      "Bomb Racks",
-      "Point Defense Cannon"
-    ]);
-
-    const categories = (categoriesPayload.data ?? [])
-      .filter((item) => item.type === "item" && relevantCategoryNames.has(item.name))
-      .map(simplifyLoadoutCategory);
-
-    const categoryResults = await Promise.all(
-      categories.map(async (category) => {
-        const [itemsPayload, attributesPayload] = await Promise.all([
-          fetchJson(`items?id_category=${category.id}`),
-          fetchJson(`items_attributes?id_category=${category.id}`)
-        ]);
-
-        const rawAttributes = (attributesPayload.data ?? []).map(simplifyLoadoutAttribute);
-        const attributesByItemId = new Map();
-
-        for (const attribute of rawAttributes) {
-          if (!attributesByItemId.has(attribute.itemId)) {
-            attributesByItemId.set(attribute.itemId, []);
-          }
-          attributesByItemId.get(attribute.itemId).push(attribute);
-        }
-
-        const components = (itemsPayload.data ?? []).map((item) =>
-          simplifyLoadoutComponent(item, category, attributesByItemId.get(item.id) ?? [])
-        );
-
-        return {
-          category,
-          components
-        };
-      })
-    );
-
-    const components = categoryResults.flatMap((entry) => entry.components);
-    const relevantItemIds = new Set(components.map((item) => item.id));
-    const prices = (pricesPayload.data ?? [])
-      .filter((item) => relevantItemIds.has(item.id_item) && (Number(item.price_buy ?? 0) > 0 || Number(item.price_sell ?? 0) > 0))
-      .map(simplifyLoadoutPrice);
-
-    const snapshot = {
-      source: "UEX API 2.0",
-      apiBase: UEX_API_BASE,
-      fetchedAt: new Date().toISOString(),
-      categories,
-      vehicles: (vehiclesPayload.data ?? [])
-        .map(simplifyVehicle)
-        .filter((item) => item.isSpaceship || item.isGroundVehicle),
-      terminals: (terminalsPayload.data ?? []).map(simplifyTerminal),
-      components,
-      prices
-    };
-
-    await fs.promises.mkdir(DATA_DIR, { recursive: true });
-    await fs.promises.writeFile(LOADOUT_SNAPSHOT_PATH, JSON.stringify(snapshot), "utf8");
-
-    return {
-      ok: true,
-      fetchedAt: snapshot.fetchedAt,
-      counts: {
-        categories: snapshot.categories.length,
-        vehicles: snapshot.vehicles.length,
-        components: snapshot.components.length,
-        prices: snapshot.prices.length,
-        terminals: snapshot.terminals.length
-      }
-    };
+    await ensureDataDir();
+    return await syncLoadoutSnapshot(SNAPSHOT_PATHS.loadout);
   } catch (error) {
     return {
       ok: false,
@@ -771,68 +232,23 @@ ipcMain.handle("loadout:sync", async () => {
   }
 });
 
-ipcMain.handle("loadout:get-snapshot", async () => {
-  try {
-    const content = await fs.promises.readFile(LOADOUT_SNAPSHOT_PATH, "utf8");
-    return {
-      ok: true,
-      snapshot: JSON.parse(content)
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error: String(error)
-    };
-  }
-});
+ipcMain.handle("loadout:get-snapshot", async () => await withSnapshotResponse(SNAPSHOT_PATHS.loadout));
 
-ipcMain.handle("trade:resolve-distances", async (_event, pairs = []) => {
-  try {
-    await fs.promises.mkdir(DATA_DIR, { recursive: true });
-    const cache = await readJsonFile(TRADE_DISTANCE_CACHE_PATH, {});
-    const result = {};
-
-    for (const pair of pairs) {
-      const originTerminalId = Number(pair?.originTerminalId);
-      const destinationTerminalId = Number(pair?.destinationTerminalId);
-      const key = getDistanceCacheKey(originTerminalId, destinationTerminalId);
-      if (!key) continue;
-
-      if (!(key in cache)) {
-        cache[key] = await fetchTerminalDistance(originTerminalId, destinationTerminalId);
-      }
-
-      result[key] = cache[key];
-    }
-
-    await fs.promises.writeFile(TRADE_DISTANCE_CACHE_PATH, JSON.stringify(cache), "utf8");
-
-    return {
-      ok: true,
-      distances: result
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error: String(error)
-    };
-  }
-});
-
-ipcMain.handle("overlay:get-state", async () => {
-  return getOverlayPayload();
-});
+ipcMain.handle("overlay:get-state", async () => getOverlayPayload());
 
 ipcMain.handle("overlay:show", async (_event, route) => {
   if (route) {
     overlayState.route = route;
     overlayState.progressIndex = 0;
   }
+
   const window = createOverlayWindow();
   overlayState.visible = true;
+
   if (!window.isVisible()) {
     window.show();
   }
+
   window.focus();
   broadcastOverlayState();
   return getOverlayPayload();
