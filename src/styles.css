@@ -1411,6 +1411,12 @@ textarea {
   background: rgba(255, 139, 139, 0.08);
 }
 
+.trade-pill.warning {
+  color: var(--warning);
+  border-color: rgba(255, 207, 90, 0.32);
+  background: rgba(255, 207, 90, 0.08);
+}
+
 .trade-selected {
   flex: 1;
   min-height: 0;
@@ -3668,6 +3674,18 @@ body {
 .mining-component-list {
   display: grid;
   gap: 8px;
+}
+
+.mining-list-meta {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+  align-content: center;
+}
+
+.mining-list-meta .trade-pill {
+  min-width: 92px;
+  justify-content: center;
 }
 
 .mining-workspace {

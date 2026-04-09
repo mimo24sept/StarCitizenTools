@@ -68,6 +68,24 @@ function getMineralShipHint(mineral) {
   return "Prospector / MOLE / Arrastra";
 }
 
+function getMiningConfidence(intel) {
+  return intel?.confidence || ((intel?.search ?? []).length ? "confirmed" : "unknown");
+}
+
+function getMiningConfidenceLabel(intel) {
+  const confidence = getMiningConfidence(intel);
+  if (confidence === "likely") return "Likely";
+  if (confidence === "unknown") return "Unknown";
+  return "Confirmed";
+}
+
+function getMiningConfidenceClass(intel) {
+  const confidence = getMiningConfidence(intel);
+  if (confidence === "likely") return "warning";
+  if (confidence === "unknown") return "danger";
+  return "safe";
+}
+
 function BuildRecommendationGroup({ title, subtitle, items, focus }) {
   return (
     <div className="mining-build-group">
@@ -484,7 +502,12 @@ export default function MiningPage() {
                       <strong>{item.name}</strong>
                       <span>{item.intel?.tier || (item.isRaw ? "Raw material" : "Mineral")}</span>
                     </div>
-                    <strong className="wikelo-ready">{item.intel?.miningType || "Ship"}</strong>
+                    <div className="mining-list-meta">
+                      <strong className="wikelo-ready">{item.intel?.miningType || "Ship"}</strong>
+                      <span className={`trade-pill ${getMiningConfidenceClass(item.intel)}`}>
+                        {getMiningConfidenceLabel(item.intel)}
+                      </span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -504,18 +527,28 @@ export default function MiningPage() {
                       <div className="mining-ship-metrics">
                         <span>{selectedMineral.intel?.miningType || "Ship"}</span>
                         <span>{getMineralShipHint(selectedMineral)}</span>
+                        <span className={`trade-pill ${getMiningConfidenceClass(selectedMineral.intel)}`}>
+                          {getMiningConfidenceLabel(selectedMineral.intel)}
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="mining-location-grid">
-                    <div className="source-card mining-primary-destination">
-                      <strong>Go here first</strong>
-                      <span>{selectedMineral.intel?.bestSpot || selectedMineral.intel?.search?.[0] || "No best spot yet."}</span>
-                    </div>
+                    {selectedMineral.intel?.bestSpot ? (
+                      <div className="source-card mining-primary-destination">
+                        <strong>Go here first</strong>
+                        <span>{selectedMineral.intel.bestSpot}</span>
+                      </div>
+                    ) : (
+                      <div className="source-card">
+                        <strong>Best lead right now</strong>
+                        <span>{selectedMineral.intel?.search?.[0] || "No public lead yet."}</span>
+                      </div>
+                    )}
 
                     <div className="source-card">
-                      <strong>Best places to search</strong>
+                      <strong>{getMiningConfidence(selectedMineral.intel) === "confirmed" ? "Best places to search" : "Community leads"}</strong>
                       {(selectedMineral.intel?.search ?? []).length ? (
                         <div className="mining-source-list">
                           {selectedMineral.intel.search.map((item) => (
