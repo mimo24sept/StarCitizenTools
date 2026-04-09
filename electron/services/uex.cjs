@@ -554,6 +554,75 @@ async function syncMiningSnapshot(snapshotPath) {
   };
 }
 
+async function syncItemFinderSnapshot(snapshotPath) {
+  const [categoriesPayload, terminalsPayload, pricesPayload] = await Promise.all([
+    fetchUexJson("categories"),
+    fetchUexJson("terminals"),
+    fetchUexJson("items_prices_all")
+  ]);
+
+  const categories = (categoriesPayload.data ?? [])
+    .filter((item) => item.type === "item")
+    .map(simplifyLoadoutCategory);
+
+  const categoryResults = await Promise.all(
+    categories.map(async (category) => {
+      const [itemsPayload, attributesPayload] = await Promise.all([
+        fetchUexJson(`items?id_category=${category.id}`),
+        fetchUexJson(`items_attributes?id_category=${category.id}`)
+      ]);
+
+      const rawAttributes = (attributesPayload.data ?? []).map(simplifyLoadoutAttribute);
+      const attributesByItemId = new Map();
+
+      for (const attribute of rawAttributes) {
+        if (!attributesByItemId.has(attribute.itemId)) {
+          attributesByItemId.set(attribute.itemId, []);
+        }
+        attributesByItemId.get(attribute.itemId).push(attribute);
+      }
+
+      const items = (itemsPayload.data ?? []).map((item) =>
+        simplifyLoadoutComponent(item, category, attributesByItemId.get(item.id) ?? [])
+      );
+
+      return {
+        category,
+        items
+      };
+    })
+  );
+
+  const items = categoryResults.flatMap((entry) => entry.items);
+  const relevantItemIds = new Set(items.map((item) => item.id));
+  const prices = (pricesPayload.data ?? [])
+    .filter((item) => relevantItemIds.has(item.id_item) && (Number(item.price_buy ?? 0) > 0 || Number(item.price_sell ?? 0) > 0))
+    .map(simplifyLoadoutPrice);
+
+  const snapshot = {
+    source: "UEX API 2.0",
+    apiBase: UEX_API_BASE,
+    fetchedAt: new Date().toISOString(),
+    categories,
+    terminals: (terminalsPayload.data ?? []).map(simplifyTerminal),
+    items,
+    prices
+  };
+
+  await fs.promises.writeFile(snapshotPath, JSON.stringify(snapshot), "utf8");
+
+  return {
+    ok: true,
+    fetchedAt: snapshot.fetchedAt,
+    counts: {
+      categories: snapshot.categories.length,
+      items: snapshot.items.length,
+      prices: snapshot.prices.length,
+      terminals: snapshot.terminals.length
+    }
+  };
+}
+
 function getDistanceCacheKey(originTerminalId, destinationTerminalId) {
   const left = Number(originTerminalId);
   const right = Number(destinationTerminalId);
@@ -606,5 +675,6 @@ module.exports = {
   syncTradeSnapshot,
   syncLoadoutSnapshot,
   syncMiningSnapshot,
+  syncItemFinderSnapshot,
   resolveTerminalDistances
 };

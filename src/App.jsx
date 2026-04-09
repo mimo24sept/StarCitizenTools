@@ -3,6 +3,7 @@ import { createDbClient } from './dbClient';
 import { PAGE_VISUALS } from './utils/constants';
 import AppState from './components/AppState';
 import CraftingPage from './pages/CraftingPage';
+import ItemFinderPage from './pages/ItemFinderPage';
 import MiningPage from './pages/MiningPage';
 import TradeRoutesPage from './pages/TradeRoutesPage';
 import WikeloPage from './pages/WikeloPage';
@@ -26,6 +27,7 @@ export default function App() {
     crafting: randomVisual("crafting"),
     trade: randomVisual("trade"),
     mining: randomVisual("mining"),
+    itemfinder: randomVisual("itemfinder"),
     wikelo: randomVisual("wikelo")
   });
 
@@ -95,6 +97,7 @@ export default function App() {
             {[
               ["crafting", "Crafting"],
               ["mining", "Mining"],
+              ["itemfinder", "Item Finder"],
               ["trade", "Trade Routes"],
               ["wikelo", "Wikelo"]
             ].map(([key, label], index) => (
@@ -128,6 +131,7 @@ export default function App() {
                 onMutate={triggerRefresh}
               />
             )}
+            {activePage === "itemfinder" && <ItemFinderPage visual={visuals.itemfinder} />}
             {activePage === "mining" && <MiningPage visual={visuals.mining} />}
             {activePage === "trade" && <TradeRoutesPage visual={visuals.trade} />}
             {activePage === "wikelo" && <WikeloPage db={db} version={version} refreshToken={refreshToken} visual={visuals.wikelo} onMutate={triggerRefresh} />}

@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("desktopAPI", {
   getTradeSnapshot: () => ipcRenderer.invoke("trade:get-snapshot"),
   runMiningSync: () => ipcRenderer.invoke("mining:sync"),
   getMiningSnapshot: () => ipcRenderer.invoke("mining:get-snapshot"),
+  runItemFinderSync: () => ipcRenderer.invoke("itemfinder:sync"),
+  getItemFinderSnapshot: () => ipcRenderer.invoke("itemfinder:get-snapshot"),
   runWikeloSync: () => ipcRenderer.invoke("wikelo:sync"),
   getWikeloSnapshot: () => ipcRenderer.invoke("wikelo:get-snapshot"),
   resolveTradeDistances: (pairs) => ipcRenderer.invoke("trade:resolve-distances", pairs),

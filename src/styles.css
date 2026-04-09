@@ -15,6 +15,72 @@
   --shadow: none;
 }
 
+.itemfinder-page {
+  gap: 16px;
+}
+
+.itemfinder-layout {
+  grid-template-columns: minmax(280px, 340px) minmax(320px, 420px) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.itemfinder-layout > .section-card {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.itemfinder-panel-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.itemfinder-form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.itemfinder-summary-card {
+  gap: 6px;
+}
+
+.itemfinder-results-list {
+  padding-right: 4px;
+}
+
+.itemfinder-detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.itemfinder-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.itemfinder-image-frame {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.itemfinder-image {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.itemfinder-attribute-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 * {
   box-sizing: border-box;
 }
