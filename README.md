@@ -14,10 +14,6 @@
 </p>
 
 <p>
-  <img src="https://media0.giphy.com/media/2PmCBT0UGX0Zxe4nF5/100.gif" alt="Star Citizen animated banner" width="720" />
-</p>
-
-<p>
   Built to keep the most useful Star Citizen tools in one local app:
   <strong>blueprints</strong>, <strong>trade planning</strong>, and <strong>Wikelo recipes</strong>,
   without juggling multiple tabs every session.
@@ -99,15 +95,6 @@ Synchronized data is stored in:
 - `data/trade_snapshot.json`
 - `data/trade_distance_cache.json`
 - `data/wikelo_snapshot.json`
-
----
-
-## Preview Vibe
-
-<div align="center">
-  <img src="https://media1.giphy.com/media/AC0OhJdzZxak0XtFtC/100.gif" alt="Star Citizen race gif" width="360" />
-  <img src="https://media4.giphy.com/media/gOFcKkrNqKBENOPu81/200.gif" alt="Star Citizen floating gif" width="360" />
-</div>
 
 ---
 
@@ -199,5 +186,3 @@ Current focus:
 - `UEX`
 - `SeekND/Wikelo`
 - `Star Citizen Wiki`
-
-Animated media in this README comes from the official `Star Citizen` GIPHY account.
