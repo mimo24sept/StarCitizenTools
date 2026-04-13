@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const fs = require("fs");
 const path = require("path");
 const { runSync } = require("./sync.cjs");
@@ -28,6 +29,86 @@ const overlayState = {
   progressIndex: 0,
   route: null
 };
+
+let updateState = {
+  checking: false,
+  available: false,
+  downloaded: false,
+  version: "",
+  error: ""
+};
+
+function broadcastUpdateState() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("update:state", updateState);
+  }
+}
+
+function initAutoUpdater() {
+  const owner = process.env.UPDATE_OWNER || process.env.GITHUB_OWNER || "";
+  const repo = process.env.UPDATE_REPO || process.env.GITHUB_REPO || "";
+
+  if (!owner || !repo) {
+    console.log("[Update] Missing UPDATE_OWNER/UPDATE_REPO env vars, skipping auto-update.");
+    return;
+  }
+
+  autoUpdater.setFeedURL({
+    provider: "github",
+    owner,
+    repo
+  });
+
+  autoUpdater.autoDownload = true;
+
+  autoUpdater.on("checking-for-update", () => {
+    updateState = { ...updateState, checking: true, error: "" };
+    broadcastUpdateState();
+  });
+
+  autoUpdater.on("update-available", (info) => {
+    updateState = {
+      ...updateState,
+      checking: false,
+      available: true,
+      version: info?.version || updateState.version
+    };
+    broadcastUpdateState();
+  });
+
+  autoUpdater.on("update-not-available", (info) => {
+    updateState = {
+      ...updateState,
+      checking: false,
+      available: false,
+      downloaded: false,
+      version: info?.version || updateState.version
+    };
+    broadcastUpdateState();
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    updateState = {
+      ...updateState,
+      checking: false,
+      available: true,
+      downloaded: true,
+      version: info?.version || updateState.version
+    };
+    broadcastUpdateState();
+  });
+
+  autoUpdater.on("error", (error) => {
+    updateState = {
+      ...updateState,
+      checking: false,
+      error: String(error)
+    };
+    broadcastUpdateState();
+  });
+
+  autoUpdater.checkForUpdatesAndNotify();
+}
 
 function getOverlayPayload() {
   return {
@@ -306,8 +387,19 @@ ipcMain.handle("overlay:reset-progress", async () => {
   return getOverlayPayload();
 });
 
+ipcMain.handle("update:get-state", async () => updateState);
+
+ipcMain.handle("update:apply", async () => {
+  if (updateState.downloaded) {
+    autoUpdater.quitAndInstall();
+    return { ok: true };
+  }
+  return { ok: false, error: "Update not downloaded yet." };
+});
+
 app.whenReady().then(() => {
   createWindow();
+  initAutoUpdater();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();

@@ -30,5 +30,12 @@ contextBridge.exposeInMainWorld("desktopAPI", {
     const handler = (_event, state) => callback(state);
     ipcRenderer.on("overlay:render", handler);
     return () => ipcRenderer.removeListener("overlay:render", handler);
+  },
+  getUpdateState: () => ipcRenderer.invoke("update:get-state"),
+  applyUpdate: () => ipcRenderer.invoke("update:apply"),
+  onUpdateState: (callback) => {
+    const handler = (_event, state) => callback(state);
+    ipcRenderer.on("update:state", handler);
+    return () => ipcRenderer.removeListener("update:state", handler);
   }
 });
