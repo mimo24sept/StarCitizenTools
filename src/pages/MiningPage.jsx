@@ -143,7 +143,7 @@ function BuildRecommendationGroup({ title, subtitle, items, focus }) {
   );
 }
 
-export default function MiningPage() {
+export default function MiningPage({ prefillMineralName = "" }) {
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -246,6 +246,12 @@ export default function MiningPage() {
   );
 
   const minerals = useMemo(() => getMiningMinerals(snapshot, mineralSearch), [snapshot, mineralSearch]);
+
+  useEffect(() => {
+    if (!prefillMineralName) return;
+    setViewMode("minerals");
+    setMineralSearch(prefillMineralName);
+  }, [prefillMineralName]);
 
   useEffect(() => {
     if (!minerals.length) {

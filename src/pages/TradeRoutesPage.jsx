@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { toNumber, fmtMoney, fmtNumber } from '../utils/helpers';
 import { TRADE_NODES, CARGO_SHIPS, COMBAT_SHIPS, LOADOUT_SLOTS } from '../utils/constants';
 import SectionCard from '../components/SectionCard';
@@ -6,7 +6,7 @@ import Hero from '../components/Hero';
 import TradeRouteMap from '../components/TradeRouteMap';
 import { calculateBestRoutes, calculateCircularRoutes, diversifyRoutes, enrichRoutesWithDistanceMap, getCargoShips, getDistancePairKey, getSystems, getTerminalLabel, getTradeCommodities, getTradeTerminals, loadTradeSnapshot, sortTradeRoutes } from '../tradeData';
 
-export default function TradeRoutesPage({ visual }) {
+export default function TradeRoutesPage({ visual, prefillCommodityName = "" }) {
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -22,6 +22,7 @@ export default function TradeRoutesPage({ visual }) {
   const [preferredDraft, setPreferredDraft] = useState("");
   const [avoidDraft, setAvoidDraft] = useState("");
   const [overlayState, setOverlayState] = useState({ visible: false, progressIndex: 0, route: null });
+  const prefillApplied = useRef(false);
   const [form, setForm] = useState({
     routeMode: "single",
     loopLegCount: 3,
@@ -89,6 +90,20 @@ export default function TradeRoutesPage({ visual }) {
       };
     });
   }, [snapshot]);
+
+  useEffect(() => {
+    if (!prefillCommodityName || prefillApplied.current) return;
+    if (!commodities.length) return;
+    const matched = commodities.find((item) => item.name.toLowerCase() === prefillCommodityName.toLowerCase());
+    if (!matched) return;
+    setForm((current) => ({
+      ...current,
+      includeCommodityIds: current.includeCommodityIds.includes(matched.id) ? current.includeCommodityIds : [matched.id],
+      excludeCommodityIds: current.excludeCommodityIds.filter((id) => id !== matched.id)
+    }));
+    setPreferredDraft("");
+    prefillApplied.current = true;
+  }, [prefillCommodityName, commodities]);
 
   useEffect(() => {
     if (!snapshot) {

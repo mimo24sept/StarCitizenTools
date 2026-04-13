@@ -1,4 +1,8 @@
 export const PAGE_VISUALS = {
+  home: [
+    { kicker: "Command Center", title: "Home", subtitle: "Sync everything fast and keep a radar on the best profits." },
+    { kicker: "Ops Desk", title: "Home", subtitle: "A clean launchpad for sync status and top market signals." }
+  ],
   crafting: [
     { kicker: "Blueprint Matrix", title: "Crafting", subtitle: "Track owned blueprints, preview quality effects, and see what your inventory can actually build." },
     { kicker: "Forge Deck", title: "Crafting", subtitle: "Readable crafting flow from mission source to material quality and final outcome." }

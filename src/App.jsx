@@ -3,6 +3,7 @@ import { createDbClient } from './dbClient';
 import { PAGE_VISUALS } from './utils/constants';
 import AppState from './components/AppState';
 import CraftingPage from './pages/CraftingPage';
+import HomePage from './pages/HomePage';
 import ItemFinderPage from './pages/ItemFinderPage';
 import MiningPage from './pages/MiningPage';
 import TradeRoutesPage from './pages/TradeRoutesPage';
@@ -19,12 +20,15 @@ export default function App() {
   const [error, setError] = useState("");
   const [versions, setVersions] = useState([]);
   const [version, setVersion] = useState("");
-  const [activePage, setActivePage] = useState("crafting");
+  const [activePage, setActivePage] = useState("home");
+  const [stickyNotes, setStickyNotes] = useState("");
   const [refreshToken, setRefreshToken] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("Local data ready");
+  const [homeSelection, setHomeSelection] = useState({ tradeCommodityName: "", mineralName: "" });
   const [visuals] = useState({
     crafting: randomVisual("crafting"),
+    home: randomVisual("home"),
     trade: randomVisual("trade"),
     mining: randomVisual("mining"),
     itemfinder: randomVisual("itemfinder"),
@@ -33,6 +37,14 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
+    const savedPage = window.localStorage.getItem("scc.activePage");
+    const savedNotes = window.localStorage.getItem("scc.stickyNotes");
+    if (savedPage) {
+      setActivePage(savedPage);
+    }
+    if (savedNotes) {
+      setStickyNotes(savedNotes);
+    }
     createDbClient()
       .then((client) => {
         if (!mounted) return;
@@ -52,6 +64,14 @@ export default function App() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("scc.activePage", activePage);
+  }, [activePage]);
+
+  useEffect(() => {
+    window.localStorage.setItem("scc.stickyNotes", stickyNotes);
+  }, [stickyNotes]);
 
   const triggerRefresh = () => setRefreshToken((value) => value + 1);
 
@@ -73,6 +93,68 @@ export default function App() {
     triggerRefresh();
     setSyncing(false);
     setSyncMessage("Synchronization complete");
+    return { ok: true };
+  }
+
+  async function runSyncAll() {
+    if (syncing) {
+      return { ok: false, error: "Sync already running" };
+    }
+
+    setSyncing(true);
+    setSyncMessage("Synchronizing all sources...");
+
+    const craftResult = await window.desktopAPI.runSync();
+    if (!craftResult.ok) {
+      setSyncing(false);
+      setSyncMessage("Synchronization failed");
+      return { ok: false, error: craftResult.stderr || "Crafting sync failed" };
+    }
+
+    await db.reloadFromDisk();
+    const loadedVersions = db.getVersions();
+    setVersions(loadedVersions);
+    setVersion(db.getDefaultVersion());
+    triggerRefresh();
+
+    const [tradeResult, miningResult, wikeloResult, itemFinderResult] = await Promise.all([
+      window.desktopAPI.runTradeSync(),
+      window.desktopAPI.runMiningSync(),
+      window.desktopAPI.runWikeloSync(),
+      window.desktopAPI.runItemFinderSync()
+    ]);
+
+    setSyncing(false);
+    setSyncMessage("Synchronization complete");
+
+    const failures = [
+      tradeResult?.ok ? null : "Trade",
+      miningResult?.ok ? null : "Mining",
+      wikeloResult?.ok ? null : "Wikelo",
+      itemFinderResult?.ok ? null : "Item Finder"
+    ].filter(Boolean);
+
+    if (failures.length) {
+      return { ok: false, error: `Failed: ${failures.join(", ")}` };
+    }
+
+    return { ok: true };
+  }
+
+  function handleHomeNavigate(target, payload = {}) {
+    if (target === "trade") {
+      setHomeSelection((current) => ({
+        ...current,
+        tradeCommodityName: payload.commodityName || ""
+      }));
+    }
+    if (target === "mining") {
+      setHomeSelection((current) => ({
+        ...current,
+        mineralName: payload.mineralName || ""
+      }));
+    }
+    setActivePage(target);
   }
 
   if (loading) return <AppState title="Loading local database" subtitle="Preparing the new desktop shell..." />;
@@ -95,6 +177,7 @@ export default function App() {
           <div className="sidebar-group-label">Modules</div>
           <nav className="nav-list">
             {[
+              ["home", "Home"],
               ["crafting", "Crafting"],
               ["mining", "Mining"],
               ["itemfinder", "Item Finder"],
@@ -113,6 +196,17 @@ export default function App() {
               </button>
             ))}
           </nav>
+
+          <div className="sidebar-notes">
+            <div className="sidebar-group-label">Notes</div>
+            <textarea
+              className="app-input sidebar-notes-input"
+              value={stickyNotes}
+              onChange={(event) => setStickyNotes(event.target.value)}
+              placeholder="Sticky notes..."
+              rows={6}
+            />
+          </div>
         </aside>
 
         <main className="content">
@@ -131,9 +225,10 @@ export default function App() {
                 onMutate={triggerRefresh}
               />
             )}
+            {activePage === "home" && <HomePage onSyncAll={runSyncAll} onNavigate={handleHomeNavigate} />}
             {activePage === "itemfinder" && <ItemFinderPage visual={visuals.itemfinder} />}
-            {activePage === "mining" && <MiningPage visual={visuals.mining} />}
-            {activePage === "trade" && <TradeRoutesPage visual={visuals.trade} />}
+            {activePage === "mining" && <MiningPage visual={visuals.mining} prefillMineralName={homeSelection.mineralName} />}
+            {activePage === "trade" && <TradeRoutesPage visual={visuals.trade} prefillCommodityName={homeSelection.tradeCommodityName} />}
             {activePage === "wikelo" && <WikeloPage db={db} version={version} refreshToken={refreshToken} visual={visuals.wikelo} onMutate={triggerRefresh} />}
           </div>
         </main>

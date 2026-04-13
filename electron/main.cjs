@@ -1,5 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
-const { autoUpdater } = require("electron-updater");
+let autoUpdater = null;
+try {
+  ({ autoUpdater } = require("electron-updater"));
+} catch (error) {
+  console.log("[Update] electron-updater not installed, skipping auto-update.");
+}
 const fs = require("fs");
 const path = require("path");
 const { runSync } = require("./sync.cjs");
@@ -45,6 +50,7 @@ function broadcastUpdateState() {
 }
 
 function initAutoUpdater() {
+  if (!autoUpdater) return;
   const owner = process.env.UPDATE_OWNER || process.env.GITHUB_OWNER || "";
   const repo = process.env.UPDATE_REPO || process.env.GITHUB_REPO || "";
 
